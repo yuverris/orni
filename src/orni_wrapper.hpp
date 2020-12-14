@@ -67,6 +67,8 @@ class SocketPP {
   void Recv(char (&buffer)[N]) {
     read(m_Connection, buffer, N);
   }
+  void setPort(int nPort) { m_Port = nPort; }                                           
+  int getPort() { return m_Port; }
 
   /*void InitServer() {
     m_init_socket();
@@ -96,7 +98,6 @@ class SocketPP {
   void CloseConn() { close(m_Connection); }
   void CloseSocket() { close(m_Sockfd); }
   void setFamily(sa_family_t fam) { m_Family = fam; }
-  void setPort(int nPort) { m_Port = nPort; }                                           
   std::function<void()> onConnOpen;
   std::function<void(const std::string_view&)> onMessage;
   std::function<void()> onServerStart;
