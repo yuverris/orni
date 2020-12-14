@@ -15,5 +15,6 @@ int main(){
         res.set("Content-Type", "text/html");
         res.send("<h1>Hello from orni !</h1>");
     });
+    app.run(1234);
 }
 ```
