@@ -1,3 +1,7 @@
+/*
+ * Copyright ©  2020-2021 Dammi 
+ * License: AGPLv3
+ * */
 #ifndef ORNI_HTTP_SERVER_HPP
 #define ORNI_HTTP_SERVER_HPP
 #include <iostream>
@@ -54,8 +58,6 @@ std::string_view method_to_str(const HttpMethod& meth) {
       break;
   }
 }
-//  struct for handling routes (callback, and http method) to avoid unnecessary
-//  uses of othet containers
 struct Request {
   std::map<std::string, std::string> Headers;
   const std::string ContentType;
@@ -86,6 +88,7 @@ class Response {
     auto str = ss.str();
     write(m_Conn, str.c_str(), str.size());
   }
+  void renderTemplate(){};
   void setStatus(int s) { m_Status = s; }
   void send(const std::string_view& cn) { m_Body << cn; }
 };
@@ -123,6 +126,7 @@ Request ParserToRequest(const httpparser::Request& req) {
 
 class HttpServer : public SocketPP {
   std::map<std::string, route_callback> m_Routes;
+  std::map<std::string, std::string> m_RouteAliases;
 
   void m_AddRoute(const std::string& path, const route_callback& callback) {
     auto exist = m_Routes.find(path);
@@ -136,6 +140,22 @@ class HttpServer : public SocketPP {
   void route(const std::string& path, const route_callback& callback) {
     m_AddRoute(path, callback);
   }
+  void alias(const std::string& new_route, const std::string& path) {
+      auto alias_find = m_RouteAliases.find(new_route);
+      if (alias_find != m_RouteAliases.end()) {
+          std::stringstream ss;
+          ss << new_route << " alias already exists";
+          throw orni::Exception(ss.str());
+      }
+      auto route_find = m_Routes.find(path);
+      if (route_find != m_Routes.end()) {
+          m_RouteAliases[new_route] = path;
+      } else {
+          std::stringstream ss;
+          ss << path << " route doesn't exist";
+          throw orni::Exception(ss.str());
+      }
+  }
   void run(int x) {
     setPort(x);
     init_socket();
@@ -148,13 +168,24 @@ class HttpServer : public SocketPP {
       httpparser::HttpRequestParser parser;
       httpparser::Request preq;
       parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
-      auto exist = m_Routes.find(preq.uri);
-      if (exist != m_Routes.end()) {
-        m_Routes[preq.uri](ParserToRequest(preq), Response(GetConn()));
+      auto getRoute = m_Routes.find(preq.uri);
+      auto getAlias = m_RouteAliases.find(preq.uri);
+      try {
+      if (getRoute != m_Routes.end()) {
+        getRoute->second(ParserToRequest(preq), Response(GetConn()));
+        CloseConn();
+      } else if (getAlias != m_RouteAliases.end()) {
+        m_Routes[getAlias->second]
+            (ParserToRequest(preq), Response(GetConn()));
+        CloseConn();
+      } else {
+         NotFoundErr(ParserToRequest(preq), Response(GetConn()));
         CloseConn();
       }
-      NotFoundErr(ParserToRequest(preq), Response(GetConn()));
-      CloseConn();
+      } catch(...) {
+          ServerErr(ParserToRequest(preq), Response(GetConn()));
+          CloseConn();
+      }
     }
     CloseSocket();
   }
@@ -169,13 +200,24 @@ class HttpServer : public SocketPP {
       httpparser::HttpRequestParser parser;
       httpparser::Request preq;
       parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
-      auto exist = m_Routes.find(preq.uri);
-      if (exist != m_Routes.end()) {
-        m_Routes[preq.uri](ParserToRequest(preq), Response(GetConn()));
+      auto getRoute = m_Routes.find(preq.uri);
+      auto getAlias = m_RouteAliases.find(preq.uri);
+      try {
+      if (getRoute != m_Routes.end()) {
+        getRoute->second(ParserToRequest(preq), Response(GetConn()));
+        CloseConn();
+      } else if (getAlias != m_RouteAliases.end()) {
+        m_Routes[getAlias->second]
+            (ParserToRequest(preq), Response(GetConn()));
+        CloseConn();
+      } else {
+         NotFoundErr(ParserToRequest(preq), Response(GetConn()));
         CloseConn();
       }
-      NotFoundErr(ParserToRequest(preq), Response(GetConn()));
-      CloseConn();
+      } catch(...) {
+          ServerErr(ParserToRequest(preq), Response(GetConn()));
+          CloseConn();
+      }
     }
     CloseSocket();
   }
