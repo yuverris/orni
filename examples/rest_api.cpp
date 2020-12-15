@@ -6,7 +6,7 @@ int main(){
     nlohmann::json jsonRes = {
         {"posts", nlohmann::json::array()}
     };
-    app.route("/posts", [&](orni::Request&& rew, orni::Response&& res){
+    app.route("/posts", [&](orni::Request&& req, orni::Response&& res){
             res.set("Content-Type", "application/json");
             res.setStatus(200);
             res.send(jsonRes.dump(4));
