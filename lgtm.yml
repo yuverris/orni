@@ -1,6 +1,10 @@
 path_classifiers:
   src:
     - "./src/*"
+  examples:
+    - "./examples/*"
+  tests:
+    - "./tests/*"
 
 extraction:
   cpp:
