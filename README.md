@@ -1,4 +1,7 @@
 # Orni
+
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/2a7358ca0dcc4022a085bc5037cfcea7)](https://app.codacy.com/gh/Dammibruh/orni?utm_source=github.com&utm_medium=referral&utm_content=Dammibruh/orni&utm_campaign=Badge_Grade)
+
 http server for modern C++ inspired from expressjs
 # Dependencies
 - [httpparser](https://github.com/nekipelov/httpparser)
