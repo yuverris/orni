@@ -19,7 +19,7 @@ class Exception {
   std::string m_Error;
 
  public:
-  Exception(const std::string& str) : m_Error(str) {}
+  explicit Exception(const std::string& str) : m_Error(str) {}
   virtual const std::string_view what() const throw() { return m_Error; }
   virtual ~Exception() = default;
 };
@@ -58,7 +58,8 @@ class SocketPP {
     if (m_Connection < 0) {
       std::stringstream ss;
       ss << "failed to accept errno " << strerror(errno);
-      throw Exception(ss.str());                                                            }
+      throw Exception(ss.str());                                                            
+    }
   }
   void Send(const std::string& str) {
     write(m_Connection, str.c_str(), str.size());
