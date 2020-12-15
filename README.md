@@ -1,7 +1,7 @@
 # Orni
 http server for modern C++ inspired from expressjs
 # Dependencies
-- [!httpparser](https://github.com/nekipelov/httpparser)
+- [httpparser](https://github.com/nekipelov/httpparser)
 
 # Example
 
