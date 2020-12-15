@@ -30,10 +30,10 @@ class SocketPP {
   int m_Port = 3100;
   int m_Type = SOCK_STREAM;
   int m_maxConn = 20;
+  int m_Connection;
 
 
     public:
-  int m_Connection;
   void init_socket() { m_Sockfd = socket(m_Family, m_Type, 0); }
   void Bind() {
     m_SockAddr.sin_family = m_Family;
@@ -72,39 +72,6 @@ class SocketPP {
   void CloseSocket() { close(m_Sockfd); }
   int getPort() { return m_Port; }
   int GetConn() { return m_Connection; }
-
-  /*void InitServer() {
-    m_init_socket();
-    onServerStart();
-    m_Bind();
-    m_Listen();
-    m_Accept();
-    onConnOpen();
-    char out[10240];
-    while (1) {
-        memset(out, 0, 10240);
-        m_Listen();
-        m_Accept();
-        if (m_Connection > 0) {
-            onConnOpen();
-        }
-        int res = recv(m_Connection, out, 10240, 0);
-        if (res == 0) {
-            onConnClose();
-        }
-        onMessage(std::string_view{out});
-    }
-  }
-  void SendMessage(const std::string& msg) { m_Send(msg); }
-
-  void SendMessage(std::string&& msg) { m_Send(std::move(msg)); }
-  void CloseConn() { close(m_Connection); }
-  void CloseSocket() { close(m_Sockfd); }
-  void setFamily(sa_family_t fam) { m_Family = fam; }
-  std::function<void()> onConnOpen;
-  std::function<void(const std::string_view&)> onMessage;
-  std::function<void()> onServerStart;
-  std::function<void()> onConnClose;*/
 };
 }  // namespace orni
 #endif  // ORNI_WRAPPER_HPP

@@ -16,7 +16,7 @@ namespace orni {
         PATCH,
         POST,
     };
-    const HttpMethod str_to_method(const std::string& str) {
+    HttpMethod str_to_method(const std::string& str) {
         if (str == "GET") {
             return HttpMethod::GET;
         }
@@ -72,10 +72,10 @@ namespace orni {
         Response() {}
         Response(int cn)
             : m_Conn(cn) {}
-        const void set(const std::string& ke, const std::string& val) {
+        void set(const std::string& ke, const std::string& val) {
             m_Headers[ke] = val;
         }
-        const void dump() const {
+        void dump() const {
             std::stringstream ss;
             ss << "HTTP/1.1 " << m_Status
                 << "\r\n";
@@ -88,10 +88,10 @@ namespace orni {
             auto str = ss.str();
             write(m_Conn, str.c_str(), str.size());
         }
-        const void setStatus(int s) {
+        void setStatus(int s) {
             m_Status = s;
         }
-        const void send(const std::string_view& cn) {
+        void send(const std::string_view& cn) {
             m_Body << cn;
         }
     };
@@ -156,13 +156,12 @@ namespace orni {
                 httpparser::HttpRequestParser parser;
                 httpparser::Request preq;
                 parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
-                std::string path = preq.uri;
-                auto exist = m_Routes.find(path);
+                auto exist = m_Routes.find(preq.uri);
                 if (exist != m_Routes.end()) {
-                    m_Routes[path](std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
+                    m_Routes[preq.uri](ParserToRequest(preq), Response(GetConn()));
                     CloseConn();
                 }
-                NotFoundErr(std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
+                NotFoundErr(ParserToRequest(preq), Response(GetConn()));
                 CloseConn();
             }
             CloseSocket();
@@ -178,13 +177,12 @@ namespace orni {
                 httpparser::HttpRequestParser parser;
                 httpparser::Request preq;
                 parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
-                std::string path = preq.uri;
-                auto exist = m_Routes.find(path);
+                auto exist = m_Routes.find(preq.uri);
                 if (exist != m_Routes.end()) {
-                    m_Routes[path](std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
+                    m_Routes[preq.uri](ParserToRequest(preq), Response(GetConn()));
                     CloseConn();
                 }
-                NotFoundErr(std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
+                NotFoundErr(ParserToRequest(preq), Response(GetConn()));
                 CloseConn();
             }
             CloseSocket();
