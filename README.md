@@ -24,3 +24,9 @@ int main(){
     app.run(1234);
 }
 ```
+
+#  TODO
+-  [ ] paramaters
+-  [ ] queries
+-  [ ] built-in ORM
+-  [ ] html template rendering
