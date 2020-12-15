@@ -1,6 +1,7 @@
 # Orni
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/2a7358ca0dcc4022a085bc5037cfcea7)](https://app.codacy.com/gh/Dammibruh/orni?utm_source=github.com&utm_medium=referral&utm_content=Dammibruh/orni&utm_campaign=Badge_Grade)
+![version](https://img.shields.io/badge/version-v0.1--alpha-red)
 
 http server for modern C++ inspired from expressjs
 # Dependencies
