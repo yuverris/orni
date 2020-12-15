@@ -11,17 +11,10 @@ int main() {
             res.send("<h1>Hello from orni!</h1>");
             res.dump();
     });
-    app.route("/about/", [&](orni::Request&& req, orni::Response&& res) {
-            res.set("Content-Type", "text/html");
-            res.send("<h1>About route</h1>");
+    app.route("/test/:id/", [&](orni::Request&& req, orni::Response&& res) {
+            std::string prm = req.Params["id"];
+            res.send(prm);
             res.dump();
     });
-    app.route("/pages/", [&](orni::Request&& req, orni::Response&& res) {
-            res.set("Content-Type", "text/html");
-            res.send("<h1>Pages route</h1>");
-            res.dump();
-    });
-    app.alias("/pages", "/pages/");
-    app.alias("/about", "/about/");
     app.run(1234);
 }

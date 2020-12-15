@@ -37,8 +37,7 @@ class SocketPP {
   int m_maxConn = 20;
   int m_Connection;
 
-
-    public:
+ public:
   void init_socket() { m_Sockfd = socket(m_Family, m_Type, 0); }
   void Bind() {
     m_SockAddr.sin_family = m_Family;
@@ -49,7 +48,7 @@ class SocketPP {
       err << "failed to bind socket errno " << strerror(errno);
       throw Exception(err.str());
     }
-  };
+  }
   void Listen() {
     if (listen(m_Sockfd, m_maxConn) < 0) {
       std::stringstream ss;
@@ -63,7 +62,7 @@ class SocketPP {
     if (m_Connection < 0) {
       std::stringstream ss;
       ss << "failed to accept errno " << strerror(errno);
-      throw Exception(ss.str());                                                            
+      throw Exception(ss.str());
     }
   }
   void Send(const std::string& str) {
@@ -73,11 +72,15 @@ class SocketPP {
   void Recv(char (&buffer)[N]) {
     read(m_Connection, buffer, N);
   }
-  void setPort(int nPort) { m_Port = nPort; }                                           
+  void setPort(int nPort) { m_Port = nPort; }
   void CloseConn() { close(m_Connection); }
   void CloseSocket() { close(m_Sockfd); }
   int getPort() { return m_Port; }
   int GetConn() { return m_Connection; }
+
+  ~SocketPP() {
+      CloseSocket();
+  }
 };
 }  // namespace orni
 #endif  // ORNI_WRAPPER_HPP
