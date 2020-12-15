@@ -27,13 +27,13 @@ class SocketPP {
   int m_Sockfd;  // socket(AF_INET, SOCK_STREAM, 0);
   sockaddr_in m_SockAddr;
   sa_family_t m_Family = AF_INET;
-  int m_Connection;
   int m_Port = 3100;
   int m_Type = SOCK_STREAM;
   int m_maxConn = 20;
 
 
     public:
+  int m_Connection;
   void init_socket() { m_Sockfd = socket(m_Family, m_Type, 0); }
   void Bind() {
     m_SockAddr.sin_family = m_Family;
@@ -68,7 +68,10 @@ class SocketPP {
     read(m_Connection, buffer, N);
   }
   void setPort(int nPort) { m_Port = nPort; }                                           
+  void CloseConn() { close(m_Connection); }
+  void CloseSocket() { close(m_Sockfd); }
   int getPort() { return m_Port; }
+  int GetConn() { return m_Connection; }
 
   /*void InitServer() {
     m_init_socket();

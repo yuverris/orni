@@ -1,7 +1,7 @@
 # Orni
 http &amp; websocket server for modern C++
 # Dependencies
-- boost http_parser
+- [!httpparser](https://github.com/nekipelov/httpparser)
 
 # Example
 
@@ -11,9 +11,10 @@ http &amp; websocket server for modern C++
 
 int main(){
     orni::HttpServer app;
-    app.get("/", [&](const orni::Request& req, const orni::Response& res){
+    app.route("/", [&](const orni::Request& req, const orni::Response& res){
         res.set("Content-Type", "text/html");
         res.send("<h1>Hello from orni !</h1>");
+        res.dump();
     });
     app.run(1234);
 }
