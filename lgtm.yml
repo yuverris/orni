@@ -1,0 +1,10 @@
+path_classifiers:
+  src:
+    - "./src/*"
+
+extraction:
+  cpp:
+    index:
+      build_command:
+        - g++ -std=c++2a ./src/test.cpp
+
