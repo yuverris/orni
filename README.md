@@ -26,7 +26,7 @@ int main(){
 ```
 
 #  TODO
--  [ ] paramaters
+-  [ ] params
 -  [ ] queries
 -  [ ] built-in ORM
 -  [ ] html template rendering
