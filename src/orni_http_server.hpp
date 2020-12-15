@@ -72,10 +72,10 @@ namespace orni {
         Response() {}
         Response(int cn)
             : m_Conn(cn) {}
-        void set(const std::string& ke, const std::string& val) {
+        const void set(const std::string& ke, const std::string& val) {
             m_Headers[ke] = val;
         }
-        void dump() {
+        const void dump() const {
             std::stringstream ss;
             ss << "HTTP/1.1 " << m_Status
                 << "\r\n";
@@ -88,10 +88,10 @@ namespace orni {
             auto str = ss.str();
             write(m_Conn, str.c_str(), str.size());
         }
-        void setStatus(int s) {
+        const void setStatus(int s) {
             m_Status = s;
         }
-        void send(const std::string_view& cn) {
+        const void send(const std::string_view& cn) {
             m_Body << cn;
         }
     };
@@ -144,6 +144,29 @@ namespace orni {
             m_AddRoute(path, 
                     callback);
         }
+        void run(int x){
+            setPort(x);
+            init_socket();
+            Bind();
+            Listen();
+            while (1) {
+                Accept();
+                char rawHttpReq[4096];
+                Recv(rawHttpReq);
+                httpparser::HttpRequestParser parser;
+                httpparser::Request preq;
+                parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
+                std::string path = preq.uri;
+                auto exist = m_Routes.find(path);
+                if (exist != m_Routes.end()) {
+                    m_Routes[path](std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
+                    CloseConn();
+                }
+                NotFoundErr(std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
+                CloseConn();
+            }
+            CloseSocket();
+        }
         void run(){
             init_socket();
             Bind();
@@ -158,12 +181,10 @@ namespace orni {
                 std::string path = preq.uri;
                 auto exist = m_Routes.find(path);
                 if (exist != m_Routes.end()) {
-                    std::cout << "req path " << path;
-                    m_Routes[path](ParserToRequest(preq), Response(m_Connection));
+                    m_Routes[path](std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
                     CloseConn();
                 }
-                std::cout << "req path " << path;
-                NotFoundErr(ParserToRequest(preq), Response(m_Connection));
+                NotFoundErr(std::move(ParserToRequest(preq)), std::move(Response(m_Connection)));
                 CloseConn();
             }
             CloseSocket();
