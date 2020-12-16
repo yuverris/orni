@@ -30,3 +30,4 @@ int main(){
 -  [x] queries
 -  [ ] built-in ORM
 -  [ ] html template rendering
+-  [ ] documentation
