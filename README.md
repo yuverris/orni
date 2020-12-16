@@ -27,7 +27,7 @@ int main(){
 head to [examples](https://github.com/Dammibruh/orni/tree/main/examples) folder ! 
 
 ## TODO
-- [ ] params
+- [x] params
 - [x] queries
 - [ ] built-in ORM
 - [ ] html template rendering
