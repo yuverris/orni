@@ -4,10 +4,10 @@
 ![version](https://img.shields.io/badge/version-v0.1--alpha-red)
 
 http server for modern C++ inspired from expressjs
-# Dependencies
--  [httpparser](https://github.com/nekipelov/httpparser) (pre-installed with source code)
+## Dependencies
+- [httpparser](https://github.com/nekipelov/httpparser) (pre-installed with source code)
 
-# Example
+## Example
 
 
 ```cpp
@@ -24,9 +24,9 @@ int main(){
 }
 ```
 
-#  TODO
--  [ ] params
--  [x] queries
--  [ ] built-in ORM
--  [ ] html template rendering
--  [ ] documentation
+## TODO
+- [ ] params
+- [x] queries
+- [ ] built-in ORM
+- [ ] html template rendering
+- [ ] documentation
