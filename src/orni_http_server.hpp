@@ -68,7 +68,6 @@ namespace orni {
     struct Request {
         std::map<std::string, std::string> Headers;
         std::map<std::string, std::string> Queries;
-        std::map<std::string, std::string> Params;
         const std::string ContentType;
         const std::string Body;
         const std::string Method;
@@ -135,11 +134,11 @@ namespace orni {
         }
         Request retReq{
             .Headers = StHeaders,
+                .Queries = StQueries,
                 .ContentType = StHeaders["Content-Type"],
                 .Body = _body,
                 .Method = req.method,
                 .Url = req.uri,
-                .Queries = StQueries
         };
         return retReq;
     }
