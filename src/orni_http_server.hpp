@@ -146,8 +146,10 @@ namespace orni {
 
     class HttpServer : public SocketPP {
         std::map<std::string, route_callback> m_Routes;
-        std::map<std::string, std::string> m_RouteAliases;
         orni::Logger m_Logger;
+        route_callback m_NotFoundPage = NotFoundErr;
+        route_callback m_ServerError = ServerErr;
+
         void m_AddRoute(const std::string& path, const route_callback& callback) {
             auto exist = m_Routes.find(path);
             if (exist != m_Routes.end()) {
@@ -160,21 +162,11 @@ namespace orni {
         void route(const std::string& path, const route_callback& callback) {
             m_AddRoute(path, callback);
         }
-        void alias(const std::string& new_route, const std::string& path) {
-            auto alias_find = m_RouteAliases.find(new_route);
-            if (alias_find != m_RouteAliases.end()) {
-                std::stringstream ss;
-                ss << new_route << " alias already exists";
-                throw orni::Exception(ss.str());
-            }
-            auto route_find = m_Routes.find(path);
-            if (route_find != m_Routes.end()) {
-                m_RouteAliases[new_route] = path;
-            } else {
-                std::stringstream ss;
-                ss << path << " route doesn't exist";
-                throw orni::Exception(ss.str());
-            }
+        void setNotFound(const route_callback& errRoute) {
+            m_NotFoundPage = errRoute;
+        }
+        void setServerError(const route_callback& errRoute) {
+            m_ServerError = errRoute;
         }
         void run(int x = 5000) {
             setPort(x);
@@ -198,7 +190,6 @@ namespace orni {
                 purl.parse(fulluri.str());
                 try {
                     auto getRoute = m_Routes.find(purl.path());
-                    auto getAlias = m_RouteAliases.find(purl.path());
                     if (getRoute != m_Routes.end()) {
                         getRoute->second(ParserToRequest(preq), Response(GetConn()));
                         std::stringstream ss;
@@ -206,14 +197,14 @@ namespace orni {
                         m_Logger.info(ss.str());
                         CloseConn();
                     } else {
-                        NotFoundErr(ParserToRequest(preq), Response(GetConn()));
+                        m_NotFoundPage(ParserToRequest(preq), Response(GetConn()));
                         std::stringstream ss;
-                        ss << preq.method << " " << purl.path()<< " " << 404;
+                        ss << preq.method << " " << purl.path() << " " << 404;
                         m_Logger.warn(ss.str());
                         CloseConn();
                     }
                 } catch(...) {
-                    ServerErr(ParserToRequest(preq), Response(GetConn()));
+                    m_ServerError(ParserToRequest(preq), Response(GetConn()));
                     std::stringstream ss;
                     ss << preq.method << " " << purl.path() << " " << 500;
                     m_Logger.error(ss.str());
