@@ -14,50 +14,9 @@
 #include "httpparser/request.h"
 #include "orni_wrapper.hpp"
 #include "util/orni_logger.hpp"
+#include "orni_router.hpp"
 
 namespace orni {
-    //  function to match a path with a parameter from paths
-    std::string getUrlParam(const std::string& path,
-            const std::vector<std::string>& paths) {
-        for (auto& p: paths) {
-            size_t pos = p.find(":");
-            if (pos != std::string::npos) {
-                if (p.substr(0, pos) == path.substr(0, pos)) {
-                    return p;
-                }
-            }
-        }
-    }
-    void split(std::string const &str, const char delim,
-            std::vector<std::string> &out)
-    {
-        std::stringstream ss(str);
-
-        std::string s;
-        while (std::getline(ss, s, delim)) {
-            out.push_back(s);
-        }
-    }
-
-    std::map<std::string, std::string> getParams(const std::string& path,
-            const std::string& urlpath) {
-        std::map<std::string, std::string> params;
-        std::vector<std::string> out;
-        std::vector<std::string> urlout;
-        split(path, '/', out);
-        split(urlpath, '/', urlout);
-        assert(urlout.size() == out.size());
-        size_t index = 0;
-        for(auto& p: out) {
-            index++;
-            size_t cpos = p.find(":");
-            if (cpos == 0) {
-                std::string newStr = p.substr(cpos, p.size());
-                std::string param = newStr.substr(1, p.size());
-                params[param] = urlout[index-1];
-            }
-        }
-    }
     enum class HttpMethod {
         GET,
         PUT,
@@ -65,60 +24,6 @@ namespace orni {
         PATCH,
         POST,
     };
-    struct Request {
-        std::map<std::string, std::string> Headers;
-        std::map<std::string, std::string> Queries;
-        const std::string ContentType;
-        const std::string Body;
-        const std::string Method;
-        const std::string Url;
-    };
-
-    class Response {
-        std::map<std::string, std::string> m_Headers;
-        int m_Status = 200;
-        std::stringstream m_Body;
-        int m_Conn;
-
-        public:
-        explicit Response(int cn) : m_Conn(cn) {}
-        void set(const std::string& ke, const std::string& val) {
-            m_Headers[ke] = val;
-        }
-        void dump() const {
-            std::stringstream ss;
-            ss << "HTTP/1.1 " << m_Status << "\r\n";
-            if (m_Headers.size() > 0) {
-                for (auto& [key, value] : m_Headers) {
-                    ss << key << ":"
-                        << " " << value << "\r\n";
-                }
-            }
-            ss << "\n" << m_Body.str();
-            auto str = ss.str();
-            write(m_Conn, str.c_str(), str.size());
-        }
-        void setStatus(int s) { m_Status = s; }
-        void send(const std::string_view& cn) { m_Body << cn; }
-        void redirect(const std::string& neUrl) {
-            setStatus(301);
-            set("Location", neUrl);
-        }
-    };
-    typedef std::function<void(orni::Request, orni::Response)> route_callback;
-
-    void ServerErr(orni::Request&& req, orni::Response&& res) {
-        res.setStatus(500);
-        res.set("Content-Type", "text/html");
-        res.send("<h1>500 internal server error.</h1>");
-        res.dump();
-    }
-    void NotFoundErr(orni::Request&& req, orni::Response&& res) {
-        res.setStatus(404);
-        res.set("Content-Type", "text/html");
-        res.send("<h1>404 not found.</h1>");
-        res.dump();
-    }
 
     Request ParserToRequest(const httpparser::Request& req) {
         httpparser::Params params;
@@ -143,31 +48,11 @@ namespace orni {
         return retReq;
     }
 
-    class HttpServer : public SocketPP {
-        std::map<std::string, route_callback> m_Routes;
+    class HttpServer : public orni::router::Router {
         orni::Logger m_Logger;
-        route_callback m_NotFoundPage = NotFoundErr;
-        route_callback m_ServerError = ServerErr;
-
-        void m_AddRoute(const std::string& path, const route_callback& callback) {
-            auto exist = m_Routes.find(path);
-            if (exist != m_Routes.end()) {
-                throw orni::Exception("path already exists");
-            }
-            m_Routes[path] = callback;
-        }
-
         public:
-        void route(const std::string& path, const route_callback& callback) {
-            m_AddRoute(path, callback);
-        }
-        void setNotFound(const route_callback& errRoute) {
-            m_NotFoundPage = errRoute;
-        }
-        void setServerError(const route_callback& errRoute) {
-            m_ServerError = errRoute;
-        }
         void run(int x = 5000) {
+            //  rewrite this block just a complete mess of code
             setPort(x);
             init_socket();
             Bind();
@@ -188,25 +73,13 @@ namespace orni {
                     << preq.uri;
                 purl.parse(fulluri.str());
                 try {
-                    auto getRoute = m_Routes.find(purl.path());
-                    if (getRoute != m_Routes.end()) {
-                        getRoute->second(ParserToRequest(preq), Response(GetConn()));
-                        std::stringstream ss;
-                        ss << preq.method << " " << purl.path() << " " << 200;
-                        m_Logger.info(ss.str());
-                        CloseConn();
-                    } else {
-                        m_NotFoundPage(ParserToRequest(preq), Response(GetConn()));
-                        std::stringstream ss;
-                        ss << preq.method << " " << purl.path() << " " << 404;
-                        m_Logger.warn(ss.str());
-                        CloseConn();
-                    }
+                    auto [params, queries, cb]  = getValidRoute(preq.uri);
+                    Request req = ParserToRequest(preq);
+                    req.Params = params;
+                    cb(req, Response(GetConn()));
+                    CloseConn();
                 } catch(...) {
-                    m_ServerError(ParserToRequest(preq), Response(GetConn()));
-                    std::stringstream ss;
-                    ss << preq.method << " " << purl.path() << " " << 500;
-                    m_Logger.error(ss.str());
+                    RenderServerErrorPage(ParserToRequest(preq), Response(GetConn()));
                     CloseConn();
                 }
             }
