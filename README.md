@@ -25,6 +25,9 @@ int main(){
 }
 ```
 
+#  Docs
+soon ™
+
 #  TODO
 -  [ ] params
 -  [x] queries
