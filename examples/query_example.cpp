@@ -13,5 +13,9 @@ int main() {
             res.send(ss.str());
             res.dump();
    });
+    app.route("/user/:id", [](orni::Request&& req, orni::Response&& res) {
+            res.send("you requested for User id " + req.Params["id"]);
+            res.dump();
+   });
     app.run();
 }
