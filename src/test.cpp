@@ -11,9 +11,16 @@ int main() {
             res.send("<h1>Hello from orni!</h1>");
             res.dump();
     });
-    app.route("/test/:id/", [&](orni::Request&& req, orni::Response&& res) {
-            std::string prm = req.Params["id"];
-            res.send(prm);
+    app.route("/test/redirect/", [&](orni::Request&& req, orni::Response&& res) {
+            res.redirect("/");
+            res.dump();
+    });
+    app.route("/test/query/", [&](orni::Request&& req, orni::Response&& res) {
+            std::stringstream ss;
+            for (auto& [key, val]: req.Queries) {
+                ss << key << " " << val << '\n';
+            }
+            res.send(ss.str());
             res.dump();
     });
     app.run(1234);

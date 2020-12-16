@@ -13,6 +13,7 @@
 #include "httpparser/httprequestparser.h"
 #include "httpparser/request.h"
 #include "orni_wrapper.hpp"
+#include "util/orni_logger.hpp"
 
 namespace orni {
     //  function to match a path with a parameter from paths
@@ -27,7 +28,7 @@ namespace orni {
             }
         }
     }
-    void tokenize(std::string const &str, const char delim,
+    void split(std::string const &str, const char delim,
             std::vector<std::string> &out)
     {
         std::stringstream ss(str);
@@ -43,8 +44,8 @@ namespace orni {
         std::map<std::string, std::string> params;
         std::vector<std::string> out;
         std::vector<std::string> urlout;
-        tokenize(path, '/', out);
-        tokenize(urlpath, '/', urlout);
+        split(path, '/', out);
+        split(urlpath, '/', urlout);
         assert(urlout.size() == out.size());
         size_t index = 0;
         for(auto& p: out) {
@@ -88,9 +89,11 @@ namespace orni {
         void dump() const {
             std::stringstream ss;
             ss << "HTTP/1.1 " << m_Status << "\r\n";
-            for (auto& [key, value] : m_Headers) {
-                ss << key << ":"
-                    << " " << value << "\r\n";
+            if (m_Headers.size() > 0) {
+                for (auto& [key, value] : m_Headers) {
+                    ss << key << ":"
+                        << " " << value << "\r\n";
+                }
             }
             ss << "\n" << m_Body.str();
             auto str = ss.str();
@@ -98,6 +101,10 @@ namespace orni {
         }
         void setStatus(int s) { m_Status = s; }
         void send(const std::string_view& cn) { m_Body << cn; }
+        void redirect(const std::string& neUrl) {
+            setStatus(301);
+            set("Location", neUrl);
+        }
     };
     typedef std::function<void(orni::Request, orni::Response)> route_callback;
 
@@ -115,10 +122,16 @@ namespace orni {
     }
 
     Request ParserToRequest(const httpparser::Request& req) {
+        httpparser::Params params;
+        httpparser::parseQueryString(params, req.uri);
         std::string _body(req.content.begin(), req.content.end());
         std::map<std::string, std::string> StHeaders;
+        std::map<std::string, std::string> StQueries;
         for (auto& i : req.headers) {
             StHeaders[i.name] = i.value;
+        }
+        for (auto& [key, val]: params) {
+            StQueries[key] = val;
         }
         Request retReq{
             .Headers = StHeaders,
@@ -126,6 +139,7 @@ namespace orni {
                 .Body = _body,
                 .Method = req.method,
                 .Url = req.uri,
+                .Queries = StQueries
         };
         return retReq;
     }
@@ -133,7 +147,7 @@ namespace orni {
     class HttpServer : public SocketPP {
         std::map<std::string, route_callback> m_Routes;
         std::map<std::string, std::string> m_RouteAliases;
-
+        orni::Logger m_Logger;
         void m_AddRoute(const std::string& path, const route_callback& callback) {
             auto exist = m_Routes.find(path);
             if (exist != m_Routes.end()) {
@@ -167,29 +181,42 @@ namespace orni {
             init_socket();
             Bind();
             Listen();
+            std::stringstream ss;
+            ss << "started server on port " << x;
+            m_Logger.info(ss.str());
             while (1) {
                 Accept();
                 char rawHttpReq[4096];
                 Recv(rawHttpReq);
                 httpparser::HttpRequestParser parser;
                 httpparser::Request preq;
+                httpparser::UrlParser purl;
                 parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
+                std::stringstream fulluri;
+                fulluri << "http://localhost:" << x
+                    << preq.uri;
+                purl.parse(fulluri.str());
                 try {
-                    auto getRoute = m_Routes.find(preq.uri);
-                    auto getAlias = m_RouteAliases.find(preq.uri);
+                    auto getRoute = m_Routes.find(purl.path());
+                    auto getAlias = m_RouteAliases.find(purl.path());
                     if (getRoute != m_Routes.end()) {
                         getRoute->second(ParserToRequest(preq), Response(GetConn()));
-                        CloseConn();
-                    } else if (getAlias != m_RouteAliases.end()) {
-                        m_Routes[getAlias->second]
-                            (ParserToRequest(preq), Response(GetConn()));
+                        std::stringstream ss;
+                        ss << preq.method << " " << purl.path() << " " << 200;
+                        m_Logger.info(ss.str());
                         CloseConn();
                     } else {
                         NotFoundErr(ParserToRequest(preq), Response(GetConn()));
+                        std::stringstream ss;
+                        ss << preq.method << " " << purl.path()<< " " << 404;
+                        m_Logger.warn(ss.str());
                         CloseConn();
                     }
                 } catch(...) {
                     ServerErr(ParserToRequest(preq), Response(GetConn()));
+                    std::stringstream ss;
+                    ss << preq.method << " " << purl.path() << " " << 500;
+                    m_Logger.error(ss.str());
                     CloseConn();
                 }
             }
