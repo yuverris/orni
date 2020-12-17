@@ -199,17 +199,19 @@ namespace orni {
                 //  of the splited tamplate
                 //  can't think of any better way to do it
                 //  (ツ) 
+                auto RawRoute = m_Routes.find(purl.path());
                 if (rcb != nullptr &&
                         !templ.empty()
                         && tmpTemUrl.size()== tmpUrl.size()
+                        && RawRoute == m_Routes.end()
                     ) {
                     param_t params = getParamsFromUrl(templ, purl.path());
                     req.Params = params;
                     rcb(std::move(req), std::move(res));
-                } else {
-                    auto RawRoute = m_Routes.find(purl.path());
-                    if (RawRoute != m_Routes.end()) { RawRoute->second(std::move(req), std::move(res)); }
-                    else { NotFoundPage(std::move(req), std::move(res)); }
+                } else if (RawRoute != m_Routes.end()) { 
+                    RawRoute->second(std::move(req), std::move(res)); 
+                } else { 
+                    NotFoundPage(std::move(req), std::move(res)); 
                 }
             }
         };

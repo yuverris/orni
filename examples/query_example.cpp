@@ -21,5 +21,9 @@ int main() {
             res.send("user path");
             res.dump();
    });
+   app.route("/user/special", [](orni::Request&& req, orni::Response&& res) {
+            res.send("special user path");
+            res.dump();
+   });
    app.run(1234);
 }
