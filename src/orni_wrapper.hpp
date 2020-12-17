@@ -1,11 +1,8 @@
+/*                                                                                       *
+ * Copyright ©  2020-2021 Dammi License: AGPLv3
+ *                                                                                       */
 /*
- * Copyright ©  2020-2021 Dammi 
- * License: AGPLv3
- *
- */
- /*
- *      socket wrapper from C to C++ style 😎
- * */
+ *      socket wrapper from C to C++ style 😎 * */
 
 #ifndef ORNI_WRAPPER_HPP
 #define ORNI_WRAPPER_HPP
@@ -16,8 +13,8 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace orni {
 class Exception {
@@ -44,7 +41,8 @@ class SocketPP {
     m_SockAddr.sin_addr.s_addr = INADDR_ANY;
     m_SockAddr.sin_port = htons(m_Port);
     int opt = 0;
-    setsockopt(m_Sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&opt, sizeof(opt));
+    setsockopt(m_Sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&opt,
+               sizeof(opt));
     if (bind(m_Sockfd, (struct sockaddr*)&m_SockAddr, sizeof(sockaddr)) < 0) {
       std::stringstream err;
       err << "failed to bind socket errno " << strerror(errno);
@@ -70,19 +68,20 @@ class SocketPP {
   void Send(const std::string& str) {
     write(m_Connection, str.c_str(), str.size());
   }
-  template<size_t N>
+  template <size_t N>
   void Recv(char (&buffer)[N]) {
     read(m_Connection, buffer, N);
   }
   void setPort(int nPort) { m_Port = nPort; }
   void CloseConn() { close(m_Connection); }
-  void CloseSocket() { shutdown(m_Sockfd, SHUT_RDWR); close(m_Sockfd); }
+  void CloseSocket() {
+    shutdown(m_Sockfd, SHUT_RDWR);
+    close(m_Sockfd);
+  }
   int getPort() { return m_Port; }
   int GetConn() { return m_Connection; }
 
-  ~SocketPP() {
-      CloseSocket();
-  }
+  ~SocketPP() { CloseSocket(); }
 };
 }  // namespace orni
 #endif  // ORNI_WRAPPER_HPP
