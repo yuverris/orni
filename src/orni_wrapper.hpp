@@ -43,6 +43,8 @@ class SocketPP {
     m_SockAddr.sin_family = m_Family;
     m_SockAddr.sin_addr.s_addr = INADDR_ANY;
     m_SockAddr.sin_port = htons(m_Port);
+    int opt = 0;
+    setsockopt(m_Sockfd, SOL_SOCKET, SO_REUSEPORT, (const char*)&opt, sizeof(opt));
     if (bind(m_Sockfd, (struct sockaddr*)&m_SockAddr, sizeof(sockaddr)) < 0) {
       std::stringstream err;
       err << "failed to bind socket errno " << strerror(errno);
@@ -74,7 +76,7 @@ class SocketPP {
   }
   void setPort(int nPort) { m_Port = nPort; }
   void CloseConn() { close(m_Connection); }
-  void CloseSocket() { close(m_Sockfd); }
+  void CloseSocket() { shutdown(m_Sockfd, SHUT_RDWR); close(m_Sockfd); }
   int getPort() { return m_Port; }
   int GetConn() { return m_Connection; }
 

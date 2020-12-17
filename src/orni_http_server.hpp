@@ -29,8 +29,8 @@ namespace orni {
 
     class HttpServer : public orni::router::Router {
         orni::Logger m_Logger;
-        void _run(std::future<int>& f) {
-            int x = f.get();
+        public:
+        void run(int x) {
             setPort(x);
             init_socket();
             Bind();
@@ -47,14 +47,13 @@ namespace orni {
             }
             CloseSocket();
         }
-        public:
-        void run(int x = 5000) {
+        /*void run(int x = 5000) {
             std::promise<int> p_run;
             std::future<int> f = p_run.get_future();
             std::future<void> f_run = std::async(std::launch::async, [&](){_run(std::ref(f));});
             p_run.set_value(x);
             f_run.wait();
-        }
+        }*/
     };
 }  // namespace orni
 

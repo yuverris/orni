@@ -47,7 +47,7 @@ namespace orni {
             write(m_Conn, str.c_str(), str.size());
         }
         void setStatus(int s) { m_Status = s; }
-        void send(const std::string_view& cn) { m_Body << cn; }
+        void send(const std::string& cn) { m_Body << cn; }
         void Redirect(const std::string& neUrl) {
             setStatus(301);
             set("Location", neUrl);
@@ -81,14 +81,14 @@ namespace orni {
             return retReq;
         }
 
-        void split(std::string const &str, const char delim,
+        void split(std::string str, const char delim,
                 std::vector<std::string> &out)
         {
-            std::stringstream ss(str);
+            std::stringstream ss(std::string{str});
 
             std::string s;
             while (std::getline(ss, s, delim)) {
-                out.push_back(s);
+                out.push_back(std::string{s});
             }
         }
         //  function for parsing paths such "/path/:id/?name=joe"
@@ -190,9 +190,18 @@ namespace orni {
                 auto [rcb, templ] = getTemplateCallback(purl.path(), m_Routes);
                 //  making sure that the callback is registered & the template length matches 
                 //  the requested url length so we won't get blank params
+                std::vector<std::string> tmpUrl,
+                    tmpTemUrl;
+                split(purl.path(), '/', tmpUrl);  // split the requested url to vector by '/'
+                split(templ, '/', tmpTemUrl);  // split the matched template by '/'
+                //  checks if the callback actually exists and 
+                //  compare the size of the splited url with the size
+                //  of the splited tamplate
+                //  can't think of any better way to do it
+                //  (ツ) 
                 if (rcb != nullptr &&
                         !templ.empty()
-                        && templ.size() == purl.path().size()
+                        && tmpTemUrl.size()== tmpUrl.size()
                     ) {
                     param_t params = getParamsFromUrl(templ, purl.path());
                     req.Params = params;
