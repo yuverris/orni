@@ -13,9 +13,13 @@ int main() {
             res.send(ss.str());
             res.dump();
    });
-    app.route("/user/:id", [](orni::Request&& req, orni::Response&& res) {
+   app.route("/user/:id", [](orni::Request&& req, orni::Response&& res) {
             res.send("you requested for User id " + req.Params["id"]);
             res.dump();
    });
-    app.run(1234);
+   app.route("/user/", [](orni::Request&& req, orni::Response&& res) {
+            res.send("user path");
+            res.dump();
+   });
+   app.run(1234);
 }
