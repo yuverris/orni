@@ -4,11 +4,12 @@
  * */
 #ifndef ORNI_HTTP_SERVER_HPP
 #define ORNI_HTTP_SERVER_HPP
+#include <utility>
 #include <iostream>
 #include <map>
 #include <sstream>
 #include <string>
-#include <cassert>
+#include <future>
 #include "httpparser/urlparser.h"
 #include "httpparser/httprequestparser.h"
 #include "httpparser/request.h"
@@ -25,34 +26,11 @@ namespace orni {
         POST,
     };
 
-    Request ParserToRequest(const httpparser::Request& req) {
-        httpparser::Params params;
-        httpparser::parseQueryString(params, req.uri);
-        std::string _body(req.content.begin(), req.content.end());
-        std::map<std::string, std::string> StHeaders;
-        std::map<std::string, std::string> StQueries;
-        for (auto& i : req.headers) {
-            StHeaders[i.name] = i.value;
-        }
-        for (auto& [key, val]: params) {
-            StQueries[key] = val;
-        }
-        Request retReq{
-            .Headers = StHeaders,
-                .Queries = StQueries,
-                .ContentType = StHeaders["Content-Type"],
-                .Body = _body,
-                .Method = req.method,
-                .Url = req.uri,
-        };
-        return retReq;
-    }
 
     class HttpServer : public orni::router::Router {
         orni::Logger m_Logger;
-        public:
-        void run(int x = 5000) {
-            //  rewrite this block just a complete mess of code
+        void _run(std::future<int>& f) {
+            int x = f.get();
             setPort(x);
             init_socket();
             Bind();
@@ -62,28 +40,20 @@ namespace orni {
             m_Logger.info(ss.str());
             while (1) {
                 Accept();
-                char rawHttpReq[4096];
+                char rawHttpReq[2048];
                 Recv(rawHttpReq);
-                httpparser::HttpRequestParser parser;
-                httpparser::Request preq;
-                httpparser::UrlParser purl;
-                parser.parse(preq, rawHttpReq, rawHttpReq + 4096);
-                std::stringstream fulluri;
-                fulluri << "http://localhost:" << x
-                    << preq.uri;
-                purl.parse(fulluri.str());
-                try {
-                    auto [params, queries, cb]  = getValidRoute(preq.uri);
-                    Request req = ParserToRequest(preq);
-                    req.Params = params;
-                    cb(req, Response(GetConn()));
-                    CloseConn();
-                } catch(...) {
-                    RenderServerErrorPage(ParserToRequest(preq), Response(GetConn()));
-                    CloseConn();
-                }
+                parseRoutes(rawHttpReq);
+                CloseConn();
             }
             CloseSocket();
+        }
+        public:
+        void run(int x = 5000) {
+            std::promise<int> p_run;
+            std::future<int> f = p_run.get_future();
+            std::future<void> f_run = std::async(std::launch::async, [&](){_run(std::ref(f));});
+            p_run.set_value(x);
+            f_run.wait();
         }
     };
 }  // namespace orni

@@ -3,6 +3,8 @@
 #include <map>
 #include <tuple>
 #include <vector>
+#include "httpparser/httprequestparser.h"
+#include "httpparser/request.h"
 #include <string>
 #include <sstream>
 #include "httpparser/urlparser.h"
@@ -56,6 +58,28 @@ namespace orni {
         typedef std::map<std::string, std::string> param_t;  // params such as "/path/:id/:name"
         typedef std::function<void(orni::Request, orni::Response)> route_callback;
         typedef std::map<std::string, route_callback> route_t;
+        Request ParserToRequest(const httpparser::Request& req) {
+            httpparser::Params params;
+            httpparser::parseQueryString(params, req.uri);
+            std::string _body(req.content.begin(), req.content.end());
+            std::map<std::string, std::string> StHeaders;
+            std::map<std::string, std::string> StQueries;
+            for (auto& i : req.headers) {
+                StHeaders[i.name] = i.value;
+            }
+            for (auto& [key, val]: params) {
+                StQueries[key] = val;
+            }
+            Request retReq{
+                .Headers = StHeaders,
+                    .Queries = StQueries,
+                    .ContentType = StHeaders["Content-Type"],
+                    .Body = _body,
+                    .Method = req.method,
+                    .Url = req.uri,
+            };
+            return retReq;
+        }
 
         void split(std::string const &str, const char delim,
                 std::vector<std::string> &out)
@@ -150,24 +174,34 @@ namespace orni {
                 ServerErrorPage = cb;
             }
             //  get a valid route from m_Routes that matches the requested route 
-            //  either a templated Url or a basic url
-            RouteObject getValidRoute(const std::string& req_url) {
-                auto [rcb, templ] = getTemplateCallback(req_url, m_Routes);
-                if (rcb != nullptr && !templ.empty()) {
-                    param_t params = getParamsFromUrl(templ, req_url);
-                    query_t queries;
-                    return RouteObject{ .Params = params, .Queries = queries, .rcb = rcb };
+            //  either a templated Url or a basic url then call it's callback
+            void parseRoutes(char req_url[]) {
+                httpparser::HttpRequestParser parser;
+                httpparser::Request preq;
+                httpparser::UrlParser purl;
+                parser.parse(preq, req_url, req_url + strlen(req_url));
+                Request req = ParserToRequest(preq);
+                Response res(GetConn());
+                std::stringstream ss;
+                ss << "http://localhost:"
+                    << getPort()
+                    << preq.uri;  //  todo: drop dependencie of httpparser
+                purl.parse(ss.str());  // for making sure that we get the requested URL without queries
+                auto [rcb, templ] = getTemplateCallback(purl.path(), m_Routes);
+                //  making sure that the callback is registered & the template length matches 
+                //  the requested url length so we won't get blank params
+                if (rcb != nullptr &&
+                        !templ.empty()
+                        && templ.size() == purl.path().size()
+                    ) {
+                    param_t params = getParamsFromUrl(templ, purl.path());
+                    req.Params = params;
+                    rcb(std::move(req), std::move(res));
                 } else {
-                    auto rcF = m_Routes.find(req_url);
-                    if(rcF->second) return RouteObject{ .rcb = rcF->second };
-                    return RouteObject { .rcb = NotFoundPage };
+                    auto RawRoute = m_Routes.find(purl.path());
+                    if (RawRoute != m_Routes.end()) { RawRoute->second(std::move(req), std::move(res)); }
+                    else { NotFoundPage(std::move(req), std::move(res)); }
                 }
-            }
-            void RenderNotFoundPage(orni::Request&& req, orni::Response&& res) {
-                NotFoundPage(std::move(req), std::move(res));
-            }
-            void RenderServerErrorPage(orni::Request&& req, orni::Response&& res) {
-                ServerErrorPage(std::move(req), std::move(res));
             }
         };
     }  // namespace router
