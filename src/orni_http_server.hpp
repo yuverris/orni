@@ -47,13 +47,13 @@ namespace orni {
             }
             CloseSocket();
         }
-        /*void run(int x = 5000) {
+        void async_run(int x = 5000) {
             std::promise<int> p_run;
             std::future<int> f = p_run.get_future();
-            std::future<void> f_run = std::async(std::launch::async, [&](){_run(std::ref(f));});
+            std::future<void> f_run = std::async(std::launch::async, [&](){run(std::ref(f));});
             p_run.set_value(x);
             f_run.wait();
-        }*/
+        }
     };
 }  // namespace orni
 
