@@ -33,4 +33,6 @@ head to [examples](https://github.com/Dammibruh/orni/tree/main/examples) folder 
 - [ ] built-in ORM
 - [ ] html template rendering
 - [ ] documentation
+- [ ] cookies
+- [ ] encryption
 
