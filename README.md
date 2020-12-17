@@ -4,7 +4,7 @@
 ![version](https://img.shields.io/badge/version-v0.1--alpha-red)
 
 http server for modern C++ inspired from expressjs,
-note orni is currently in development and have lot of bugs so don't expect high performance and effective responses from the web server
+note orni is currently in development and have lot of bugs so don't expect high performance and efficient responses from the web server, so any pull request or issue is appreciated
 ## Dependencies
 - [httpparser](https://github.com/nekipelov/httpparser) (pre-installed with source code)
 
