@@ -12,6 +12,9 @@ target_link_libraries(query_example PUBLIC orni::orni)
 add_executable(redirect_page redirect_page.cpp)
 target_link_libraries(redirect_page PUBLIC orni::orni)
 
+add_executable(basic_auth basic_auth.cpp)
+target_link_libraries(basic_auth PUBLIC orni::orni)
+
 find_package(nlohmann_json)
 
 if(nlohmann_json_FOUND)
