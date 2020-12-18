@@ -16,7 +16,6 @@
 #include "httpparser/urlparser.h"
 #include "orni_router.hpp"
 #include "orni_wrapper.hpp"
-#include "util/orni_logger.hpp"
 
 namespace orni {
 enum class HttpMethod {
@@ -28,8 +27,6 @@ enum class HttpMethod {
 };
 
 class HttpServer : public orni::router::Router {
-    orni::Logger m_Logger;
-
     void m_Run(std::future<int>& f) {
         int x = f.get();
         setPort(x);
@@ -38,7 +35,7 @@ class HttpServer : public orni::router::Router {
         Listen();
         std::stringstream ss;
         ss << "started server on port " << x;
-        m_Logger.info(ss.str());
+        orni::logger.info(ss.str());
         while (1) {
             Accept();
             char rawHttpReq[2048];

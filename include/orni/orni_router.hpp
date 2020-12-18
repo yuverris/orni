@@ -9,8 +9,10 @@
 #include <vector>
 
 #include "orni_wrapper.hpp"
+#include "util/orni_logger.hpp"
 
 namespace orni {
+orni::Logger logger;
 struct Request {
     std::map<std::string, std::string> Headers;
     std::map<std::string, std::string> Queries;
@@ -26,26 +28,11 @@ struct Request {
 class Response {
     std::map<std::string, std::string> m_Headers;
     int m_Status = 200;
-    std::stringstream m_Body;
-    int m_Conn;
+    std::string m_Body;
 
    public:
-    explicit Response(int cn) : m_Conn(cn) {}
     void set(const std::string& ke, const std::string& val) {
         m_Headers.insert({ke, val});
-    }
-    void dump() const {
-        std::stringstream ss;
-        ss << "HTTP/1.1 " << m_Status << "\r\n";
-        if (m_Headers.size() > 0) {
-            for (auto& [key, value] : m_Headers) {
-                ss << key << ":"
-                   << " " << value << "\r\n";
-            }
-        }
-        ss << "\n" << m_Body.str();
-        auto str = ss.str();
-        write(m_Conn, str.c_str(), str.size());
     }
     void addCookie(const std::string& name, const std::string& val) {
         std::stringstream ss;
@@ -55,11 +42,14 @@ class Response {
                                         // we won't overwrite other cookies
     }
     void setStatus(int s) { m_Status = s; }
-    void send(const std::string& cn) { m_Body << cn; }
+    void send(const std::string& cn) { m_Body += cn; }
     void Redirect(const std::string& neUrl) {
         setStatus(301);
         set("Location", neUrl);
     }
+    int getStatus() const { return m_Status; }
+    auto getHeaders() const { return m_Headers; }
+    auto getBody() const { return m_Body; }
 };
 
 void split(std::string str, const char delim, std::vector<std::string>& out) {
@@ -69,6 +59,18 @@ void split(std::string str, const char delim, std::vector<std::string>& out) {
     while (std::getline(ss, s, delim)) {
         out.push_back(std::string{s});
     }
+}
+std::string parseResponse(const Response& res) {
+    std::stringstream ss;
+    ss << "HTTP/1.1 " << res.getStatus() << "\r\n";
+    if (res.getHeaders().size() > 0) {
+        for (auto& [key, value] : res.getHeaders()) {
+            ss << key << ":"
+               << " " << value << "\r\n";
+        }
+    }
+    ss << "\n" << res.getBody();
+    return ss.str();
 }
 std::map<std::string, std::string> parseCookies(const std::string& str) {
     std::ostringstream oss;
@@ -113,7 +115,7 @@ typedef std::map<std::string, std::string>
     query_t;  // queries such as "?id=5&name=joe"
 typedef std::map<std::string, std::string>
     param_t;  // params such as "/path/:id/:name"
-typedef std::function<void(orni::Request, orni::Response)> route_callback;
+typedef std::function<void(orni::Request&, orni::Response&)> route_callback;
 typedef std::map<std::string, route_callback> route_t;
 Request ParserToRequest(const httpparser::Request& req) {
     httpparser::Params params;
@@ -191,17 +193,15 @@ struct RouteObject {
 };
 class Router : public orni::SocketPP {
     route_t m_Routes;
-    route_callback NotFoundPage = [&](Request&& req, Response&& res) {
+    route_callback NotFoundPage = [&](Request& req, Response& res) {
         res.setStatus(404);
         res.set("Content-Type", "text/html");
         res.send("<h1>404<h1>\nNot Found");
-        res.dump();
     };
-    route_callback ServerErrorPage = [&](Request&& req, Response&& res) {
+    route_callback ServerErrorPage = [&](Request& req, Response& res) {
         res.setStatus(500);
         res.set("Content-Type", "text/html");
         res.send("<h1>500<h1>\nServer Error");
-        res.dump();
     };
 
    public:
@@ -227,7 +227,7 @@ class Router : public orni::SocketPP {
         Request req = ParserToRequest(preq);
         size_t Qpos = preq.uri.find('?');
         std::string purl = preq.uri.substr(0, Qpos);
-        Response res(GetConn());
+        Response res;
         auto [rcb, templ] = getTemplateCallback(purl, m_Routes);
         //  making sure that the callback is registered & the template length
         //  matches the requested url length so we won't get blank params
@@ -255,12 +255,17 @@ class Router : public orni::SocketPP {
             tmpTemUrl.size() == tmpUrl.size() && RawRoute == m_Routes.end()) {
             param_t params = getParamsFromUrl(templ, purl);
             req.Params = params;
-            rcb(std::move(req), std::move(res));
+            rcb(std::ref(req), std::ref(res));
         } else if (RawRoute != m_Routes.end()) {
-            RawRoute->second(std::move(req), std::move(res));
+            RawRoute->second(std::ref(req), std::ref(res));
         } else {
-            NotFoundPage(std::move(req), std::move(res));
+            NotFoundPage(std::ref(req), std::ref(res));
         }
+        std::string resString = parseResponse(res);
+        write(GetConn(), resString.c_str(), resString.size());
+        std::stringstream log;
+        log << req.Method << ' ' << purl << ' ' << res.getStatus();
+        logger.debug(log.str());
     }
 };
 }  // namespace router
