@@ -13,7 +13,7 @@ note orni is currently in development and have lot of bugs so don't expect high 
 
 
 ```cpp
-#include <orni/orni_http_server.hpp>
+#include <orni/orni.hpp>
 
 int main(){
     orni::HttpServer app;
