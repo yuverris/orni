@@ -1,4 +1,4 @@
-#include "../src/orni_http_server.hpp"
+#include <orni/orni_http_server.hpp>
 #include <nlohmann/json.hpp> //  or use any json library
 
 int main(){

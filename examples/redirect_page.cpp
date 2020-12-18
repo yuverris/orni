@@ -1,4 +1,4 @@
-#include "../src/orni_http_server.hpp"
+#include <orni/orni_http_server.hpp>
 
 int main() {
     orni::HttpServer app;
@@ -8,7 +8,7 @@ int main() {
     });
     app.route("/redirect", [](orni::Request&& req, orni::Response&& res) {
             res.send("redirecting you to /target");
-            res.redirect("/target");
+            res.Redirect("/target");
             res.dump();
     });
     app.route("/target", [](orni::Request&& req, orni::Response&& res) {

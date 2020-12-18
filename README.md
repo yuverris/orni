@@ -13,7 +13,7 @@ note orni is currently in development and have lot of bugs so don't expect high 
 
 
 ```cpp
-#include "orni_http_server.hpp"
+#include <orni/orni_http_server.hpp>
 
 int main(){
     orni::HttpServer app;
@@ -37,3 +37,55 @@ head to [examples](https://github.com/Dammibruh/orni/tree/main/examples) folder 
 - [ ] cookies
 - [ ] encryption
 - [ ] cookie parser
+
+## CMake
+
+The project has full CMake integration.
+
+### Compilation
+
+To compile the project, simply do the classical cmake project setup:
+
+```shell
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make all -j4 
+```
+
+This will build all examples.
+
+### Installation & Integration
+
+The project also has a functional installation target. To use this, make sure
+to configure the `CMAKE_INSTALL_PREFIX` for this project, and the `CMAKE_PREFIX_PATH`
+for the project that you are integrating with.
+
+An example follows:
+```shell
+# Assuming we're in the current project's directory
+$ mkdir ../_libs
+$ mkdir build && cd build
+$ cmake -DCMAKE_INSTALL_PREFIX=../../_libs ..
+$ make install -j4 # Will install the library to the ../../_libs folder
+$
+$ cd ../../my_other_project
+$ mkdir build && cd build
+$ cmake -DCMAKE_PREFIX_PATH=../../_libs
+$ make all -j4
+```
+
+A cmake file accompanying `my_other_project` may look something like this:
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(my_other_project)
+
+find_package(orni REQUIRED)
+
+# your own project setup goes here...
+
+target_link_libraries(my_target
+    PUBLIC
+        orni::orni
+)
+```

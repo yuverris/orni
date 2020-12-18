@@ -1,4 +1,4 @@
-#include "../src/orni_http_server.hpp"
+#include <orni/orni_http_server.hpp>
 
 int main() {
     orni::HttpServer app;
