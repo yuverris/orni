@@ -1,6 +1,6 @@
 #include <fstream>
 
-#include "../orni_http_server.hpp"
+#include <orni/orni_http_server.hpp>
 
 std::string_view defaultIndex =
     ""
