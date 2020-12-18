@@ -90,3 +90,11 @@ target_link_libraries(my_target
         orni::orni
 )
 ```
+
+## Goals
+
+the main goal from making Orni was just for learning pruposes, how http works under the hood
+and C++ is already powerful, and why not bringing that power to web dev field so I decided
+to work on Orni as my main project trying my best to make it leightweight 0 dependencies, 
+efficient and easy to use for modern C++ 17 and higher, and why not compete other frameworks
+such as expressjs, flask, django, laravel, ruby on rails, actix web 

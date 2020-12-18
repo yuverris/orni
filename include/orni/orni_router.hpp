@@ -36,7 +36,7 @@ class Response {
     }
     void dump() const {
         std::stringstream ss;
-        ss << "HTTP/2 " << m_Status << "\r\n";
+        ss << "HTTP/1.1 " << m_Status << "\r\n";
         if (m_Headers.size() > 0) {
             for (auto& [key, value] : m_Headers) {
                 ss << key << ":"
@@ -129,11 +129,11 @@ Request ParserToRequest(const httpparser::Request& req) {
     }
     Request retReq{.Headers = StHeaders,
                    .Queries = StQueries,
+                   .Cookies = parseCookies(StHeaders["Cookie"]),
                    .ContentType = StHeaders["Content-Type"],
                    .Body = _body,
                    .Method = req.method,
-                   .Url = req.uri,
-                   .Cookies = parseCookies(StHeaders["Cookie"])};
+                   .Url = req.uri};
     if (retReq.ContentType == "application/x-www-form-urlencoded") {
         retReq.Form = parseForm(retReq.Body);
     }
@@ -193,13 +193,13 @@ class Router : public orni::SocketPP {
     route_t m_Routes;
     route_callback NotFoundPage = [&](Request&& req, Response&& res) {
         res.setStatus(404);
-        res.set("content-type", "text/html");
+        res.set("Content-Type", "text/html");
         res.send("<h1>404<h1>\nNot Found");
         res.dump();
     };
     route_callback ServerErrorPage = [&](Request&& req, Response&& res) {
         res.setStatus(500);
-        res.set("content-type", "text/html");
+        res.set("Content-Type", "text/html");
         res.send("<h1>500<h1>\nServer Error");
         res.dump();
     };
@@ -223,20 +223,16 @@ class Router : public orni::SocketPP {
     void parseRoutes(char req_url[]) {
         httpparser::HttpRequestParser parser;
         httpparser::Request preq;
-        httpparser::UrlParser purl;
         parser.parse(preq, req_url, req_url + strlen(req_url));
         Request req = ParserToRequest(preq);
+        size_t Qpos = preq.uri.find('?');
+        std::string purl = preq.uri.substr(0, Qpos);
         Response res(GetConn());
-        std::stringstream ss;
-        ss << "http://localhost:" << getPort()
-           << preq.uri;        //  todo: drop dependencie of httpparser
-        purl.parse(ss.str());  // for making sure that we get the requested URL
-                               // without queries
-        auto [rcb, templ] = getTemplateCallback(purl.path(), m_Routes);
+        auto [rcb, templ] = getTemplateCallback(purl, m_Routes);
         //  making sure that the callback is registered & the template length
         //  matches the requested url length so we won't get blank params
         std::vector<std::string> tmpUrl, tmpTemUrl;
-        split(purl.path(), '/',
+        split(purl, '/',
               tmpUrl);  // split the requested url to vector by '/'
         split(templ, '/', tmpTemUrl);  // split the matched template by '/'
         //  checks if the callback actually exists and
@@ -254,10 +250,10 @@ class Router : public orni::SocketPP {
         //  '
         //  can't think of any better way to do it
         //  (ツ)
-        auto RawRoute = m_Routes.find(purl.path());
+        auto RawRoute = m_Routes.find(purl);
         if (rcb != nullptr && !templ.empty() &&
             tmpTemUrl.size() == tmpUrl.size() && RawRoute == m_Routes.end()) {
-            param_t params = getParamsFromUrl(templ, purl.path());
+            param_t params = getParamsFromUrl(templ, purl);
             req.Params = params;
             rcb(std::move(req), std::move(res));
         } else if (RawRoute != m_Routes.end()) {
