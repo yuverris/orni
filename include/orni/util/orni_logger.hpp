@@ -6,9 +6,8 @@
 namespace orni {
 enum class Level { Info, Warning, Error, Debug, Any };
 namespace colors {
-std::string_view red = "[1;31m", black = "[1;30m", green = "[1;32m",
-                 yellow = "[1;33m", blue = "[1;34m", cyan = "[1;36m",
-                 white = "[1;37m";
+std::string_view red = "[1;31m", green = "[1;32m", yellow = "[1;33m",
+                 blue = "[1;34m", cyan = "[1;36m", white = "[1;37m";
 }  // namespace colors
 
 class Logger {
@@ -21,7 +20,7 @@ class Logger {
    public:
     void debug(const std::string& text) {
         if (m_CheckFilter(Level::Debug)) {
-            std::cout << "\033" << colors::blue << "[DEBUG]: " << text
+            std::cout << "\033" << colors::cyan << "[DEBUG]: " << text
                       << "\033[0m\n";
         }
     }

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iterator>
 #include <map>
+#include <regex>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -16,9 +17,9 @@ orni::Logger logger;
 struct Request {
     std::map<std::string, std::string> Headers;
     std::map<std::string, std::string> Queries;
-    std::map<std::string, std::string> Params;
     std::map<std::string, std::string> Form;
     std::map<std::string, std::string> Cookies;
+    std::vector<std::string> Params;
     const std::string ContentType;
     const std::string Body;
     const std::string Method;
@@ -118,16 +119,14 @@ typedef std::map<std::string, std::string>
 typedef std::function<void(orni::Request&, orni::Response&)> route_callback;
 typedef std::map<std::string, route_callback> route_t;
 Request ParserToRequest(const httpparser::Request& req) {
-    httpparser::Params params;
-    httpparser::parseQueryString(params, req.uri);
+    size_t pos = req.uri.find('?');
     std::string _body(req.content.begin(), req.content.end());
     std::map<std::string, std::string> StHeaders;
-    std::map<std::string, std::string> StQueries;
+    std::map<std::string, std::string> StQueries = parseForm(req.uri.substr(
+        pos + 1,
+        req.uri.size()));  // since queries are kinda same as forms style
     for (auto& i : req.headers) {
         StHeaders[i.name] = i.value;
-    }
-    for (auto& [key, val] : params) {
-        StQueries[key] = val;
     }
     Request retReq{.Headers = StHeaders,
                    .Queries = StQueries,
@@ -144,52 +143,12 @@ Request ParserToRequest(const httpparser::Request& req) {
     return retReq;
 }
 
-//  function for parsing paths such "/path/:id/?name=joe"
-//  exurl is the template url the match with ex: "/path/:id/"
-//  url is the requested url check if it matches with the templated url ex:
-//  "/path/5/" should out put: params["id"] -> 5
-param_t getParamsFromUrl(const std::string& exurl, const std::string& url) {
-    param_t params;
-    std::vector<std::string> splited_exurl;
-    std::vector<std::string> splited_url;
-    split(exurl, '/', splited_exurl);
-    split(url, '/', splited_url);
-    size_t index = 0;
-    for (auto& p : splited_exurl) {
-        size_t pos = p.find(":");
-        ++index;
-        if (pos != std::string::npos) {
-            std::string newStr =
-                p.substr(pos,
-                         p.size());  // get the string between the ':' to the
-                                     // end of the path
-            std::string param = newStr.substr(
-                1, p.size());  // extract the parameter wuthout the ':'
-            params[param] = splited_url[index - 1];
-        }
-    }
-    return params;
-}
-//  check if the given url matches the given templated url
-bool isTemplatedUrl(const std::string& exurl, const std::string& url) {
-    size_t expos = url.find(":");
-    return exurl.substr(0, expos) == url.substr(0, expos);
-}
-
-//  find a registered route that matches a certain template then get it's
-//  callback
-std::tuple<route_callback, std::string> getTemplateCallback(
-    const std::string& templateurl, const route_t& cbs) {
-    for (auto& [route, cb] : cbs) {
-        if (isTemplatedUrl(templateurl, route)) {
-            return {cb, route};
-        }
-    }
-    return {nullptr, std::string{}};
-}
-
+struct RouteObject {
+    const std::string _str_url;
+    const route_callback rcb;
+};
 class Router : public orni::SocketPP {
-    route_t m_Routes;
+    std::vector<RouteObject> m_Routes;
     route_callback NotFoundPage = [&](Request& req, Response& res) {
         res.setStatus(404);
         res.set("Content-Type", "text/html");
@@ -202,15 +161,22 @@ class Router : public orni::SocketPP {
     };
 
    public:
-    route_t getRoutes() { return m_Routes; }
+    auto getRoutes() { return m_Routes; }
     void route(const std::string& path, const route_callback& cb) {
-        auto findRoute = m_Routes.find(path);
-        if (findRoute != m_Routes.end()) {
+        bool exist;
+        std::for_each(m_Routes.begin(), m_Routes.end(), [&](auto& _route_obj) {
+            if (_route_obj._str_url == path) {
+                exist = true;
+            } else {
+                exist = false;
+            }
+        });
+        if (exist) {
             std::stringstream ss;
             ss << path << " already registered";
             throw orni::Exception(ss.str());
         } else {
-            m_Routes[path] = cb;
+            m_Routes.push_back(RouteObject{._str_url = path, .rcb = cb});
         }
     }
     void setNotFoundPage(const route_callback& cb) { NotFoundPage = cb; }
@@ -225,38 +191,34 @@ class Router : public orni::SocketPP {
         size_t Qpos = preq.uri.find('?');
         std::string purl = preq.uri.substr(0, Qpos);
         Response res;
-        auto [rcb, templ] = getTemplateCallback(purl, m_Routes);
-        //  making sure that the callback is registered & the template length
-        //  matches the requested url length so we won't get blank params
-        std::vector<std::string> tmpUrl, tmpTemUrl;
-        split(purl, '/',
-              tmpUrl);  // split the requested url to vector by '/'
-        split(templ, '/', tmpTemUrl);  // split the matched template by '/'
-        //  checks if the callback actually exists and
-        //  compare the size of the splited url with the size
-        //  of the splited tamplate then check
-        //  if the reuqested route is not already registered
-        //  in m_Routes ex:
-        //  '
-        //  consider that we have "/path/main" and "/path/:id" both
-        //  are registered:
-        //  req_url -> "/path/main" -> get valid route
-        //  -> returns both checks [/path/:id, /path/main]
-        //  in this case the "/path/main" callback will
-        //  be invoked instead of "/path/:id" callback
-        //  '
-        //  can't think of any better way to do it
-        //  (ツ)
-        auto RawRoute = m_Routes.find(purl);
-        if (rcb != nullptr && !templ.empty() &&
-            tmpTemUrl.size() == tmpUrl.size() && RawRoute == m_Routes.end()) {
-            param_t params = getParamsFromUrl(templ, purl);
-            req.Params = params;
-            rcb(std::ref(req), std::ref(res));
-        } else if (RawRoute != m_Routes.end()) {
-            RawRoute->second(std::ref(req), std::ref(res));
-        } else {
-            NotFoundPage(std::ref(req), std::ref(res));
+        size_t r_search_index = 0;
+        for (auto& route : m_Routes) {
+            r_search_index++;
+            std::regex exp(
+                route._str_url);  // parsing each route to a regex expression
+                                  // and then check if it matches the requested
+                                  // uri and execute it's callback
+            auto _matched_url = std::regex_match(purl, exp);
+            logger.debug("searching for matches");
+            logger.debug("url: " + purl + " route: " + route._str_url + '\n');
+            if (_matched_url) {
+                logger.debug(route._str_url + " matched " + purl);
+                std::smatch matches;
+                std::regex_search(purl, matches, exp);
+                std::vector<std::string> _params;
+                for (size_t i = 0; i <= matches.size() - 1;
+                     ++i) {  // yeet O(n²)
+                    _params.push_back(matches[i].str());
+                    logger.debug("regex iter: " + matches[i].str());
+                }
+                req.Params = _params;
+                route.rcb(std::ref(req), std::ref(res));
+                break;
+            } else if (!(_matched_url) && r_search_index == m_Routes.size()) {
+                NotFoundPage(std::ref(req), std::ref(res));
+            } else if (_matched_url && purl == route._str_url) {
+                route.rcb(std::ref(req), std::ref(res));
+            }
         }
         std::string resString = parseResponse(res);
         write(GetConn(), resString.c_str(), resString.size());
@@ -264,7 +226,7 @@ class Router : public orni::SocketPP {
         log << req.Method << ' ' << purl << ' ' << res.getStatus();
         logger.info(log.str());
     }
-};
+};  // namespace router
 }  // namespace router
 }  // namespace orni
 #endif  // ORNI_ROUTER_HPP
