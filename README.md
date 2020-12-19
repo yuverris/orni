@@ -4,12 +4,12 @@
 ![version](https://img.shields.io/badge/version-v0.1--alpha-red)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 
-http server for modern C++ inspired from expressjs,
-note orni is currently in development and have lot of bugs so don't expect high performance and efficient responses from the web server, so any pull request or issue is appreciated
-## Dependencies
+http server for modern C++ inspired from expressjs and other frameworks ,
+note orni is currently in development and have lot of bugs so don't expect high performance and efficient responses from the web server, any pull request or issue is appreciated <3
+### Dependencies
 - [httpparser](https://github.com/nekipelov/httpparser) (pre-installed with source code)
 
-## Example
+### Example
 
 
 ```cpp
@@ -24,10 +24,10 @@ int main(){
     app.run(1234);
 }
 ```
-## More examples ?
+### More examples ?
 head to [examples](https://github.com/Dammibruh/orni/tree/main/examples) folder ! 
 
-## TODO
+### TODO
 - [x] params
 - [x] queries
 - [ ] built-in ORM
@@ -37,6 +37,8 @@ head to [examples](https://github.com/Dammibruh/orni/tree/main/examples) folder 
 - [ ] encryption
 - [x] cookie parser
 - [x] support for forms
+- [ ] support for files and multipart data
+- [ ] built-in http parser without any external library
 
 ## CMake
 
@@ -96,4 +98,5 @@ the main goal from making Orni was just for learning pruposes, how http works un
 and C++ is already powerful, and why not bringing that power to web dev field so I decided
 to work on Orni as my main project trying my best to make it leightweight 0 dependencies, 
 efficient and easy to use for modern C++ 17 and higher, and why not compete other frameworks
-such as expressjs, flask, django, laravel, ruby on rails, actix web 
+such as expressjs, flask, django, laravel, ruby on rails, actix web. As of now Orni basic app
+can handle 10k ~ 20k maximum connections with an average of 25ms latency at 250 request / sec !

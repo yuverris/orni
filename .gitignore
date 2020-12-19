@@ -37,3 +37,8 @@ cmake-build-*
 
 # CLion shenanigans
 .idea
+
+
+*.html
+*.css
+

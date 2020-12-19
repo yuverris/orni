@@ -7,3 +7,6 @@ the root path renders the index.html file
 - `init`: create a default html template in the current directory
 - `start`: starts the web server
 
+### TODO
+- [ ] add support for directories
+- [ ] use cache

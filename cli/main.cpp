@@ -1,6 +1,5 @@
 #include <fstream>
-
-#include <orni/orni_http_server.hpp>
+#include <orni/orni.hpp>
 
 std::string_view defaultIndex =
     ""
@@ -27,7 +26,7 @@ std::string_view defaultIndex =
 
 void localServer() {
     orni::HttpServer app;
-    app.route("/", [&](orni::Request&& req, orni::Response&& res) {
+    app.route("/", [&](orni::Request& req, orni::Response& res) {
         std::string renderPage;
         try {
             std::ifstream index("./index.html");
@@ -44,9 +43,8 @@ void localServer() {
         }
         res.set("Content-Type", "text/html");
         res.send(renderPage);
-        res.dump();
     });
-    app.route("/:file/", [&](orni::Request&& req, orni::Response&& res) {
+    app.route("/:file/", [&](orni::Request& req, orni::Response& res) {
         std::string exRes;
         try {
             std::string fileName = req.Params["file"];
@@ -64,7 +62,6 @@ void localServer() {
             exRes = "file not found";
         }
         res.send(exRes);
-        res.dump();
     });
     app.run();
 }

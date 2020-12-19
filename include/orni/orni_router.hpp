@@ -136,7 +136,9 @@ Request ParserToRequest(const httpparser::Request& req) {
                    .Body = _body,
                    .Method = req.method,
                    .Url = req.uri};
-    if (retReq.ContentType == "application/x-www-form-urlencoded") {
+    if (retReq.ContentType ==
+        "application/x-www-form-urlencoded") {  //  checking if a post performed
+                                                //  from a form
         retReq.Form = parseForm(retReq.Body);
     }
     return retReq;
@@ -186,11 +188,6 @@ std::tuple<route_callback, std::string> getTemplateCallback(
     return {nullptr, std::string{}};
 }
 
-struct RouteObject {
-    param_t Params;
-    query_t Queries;
-    route_callback rcb;
-};
 class Router : public orni::SocketPP {
     route_t m_Routes;
     route_callback NotFoundPage = [&](Request& req, Response& res) {
@@ -265,7 +262,7 @@ class Router : public orni::SocketPP {
         write(GetConn(), resString.c_str(), resString.size());
         std::stringstream log;
         log << req.Method << ' ' << purl << ' ' << res.getStatus();
-        logger.debug(log.str());
+        logger.info(log.str());
     }
 };
 }  // namespace router
