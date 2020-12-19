@@ -7,7 +7,7 @@
 http server for modern C++ inspired from expressjs and other frameworks ,
 note orni is currently in development and have lot of bugs so don't expect high performance and efficient responses from the web server, any pull request or issue is appreciated <3
 ### Dependencies
-- [httpparser](https://github.com/nekipelov/httpparser) (pre-installed with source code)
+-   [httpparser](https://github.com/nekipelov/httpparser) (pre-installed with source code)
 
 ### Example
 
@@ -28,17 +28,17 @@ int main(){
 head to [examples](https://github.com/Dammibruh/orni/tree/main/examples) folder ! 
 
 ### TODO
-- [x] params
-- [x] queries
-- [ ] built-in ORM
-- [ ] html template rendering
-- [ ] documentation
-- [x] cookies
-- [ ] encryption
-- [x] cookie parser
-- [x] support for forms
-- [ ] support for files and multipart data
-- [ ] built-in http parser without any external library
+-   [x] params
+-   [x] queries
+-   [ ] built-in ORM
+-   [ ] html template rendering
+-   [ ] documentation
+-   [x] cookies
+-   [ ] encryption
+-   [x] cookie parser
+-   [x] support for forms
+-   [ ] support for files and multipart data
+-   [ ] built-in http parser without any external library
 
 ## CMake
 

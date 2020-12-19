@@ -8,5 +8,5 @@ the root path renders the index.html file
 - `start`: starts the web server
 
 ### TODO
-- [ ] add support for directories
-- [ ] use cache
+-   [ ] add support for directories
+-   [ ] use cache
