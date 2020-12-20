@@ -15,7 +15,6 @@ option(WITH_EXAMPLES "Compile the project with examples." ON)
 option(WITH_CLI "Compile the project with the CLI utility." ON)
 
 add_subdirectory(src)
-#add_subdirectory(tests)
 
 if(WITH_EXAMPLES)
     add_subdirectory(examples)

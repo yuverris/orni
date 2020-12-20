@@ -1,16 +1,13 @@
 #ifndef ORNI_ROUTER_HPP
 #define ORNI_ROUTER_HPP
-#include <algorithm>
-#include <iterator>
-#include <map>
 #include <regex>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
 
+#include "httpparser/httprequestparser.h"
+#include "orni_parsers.hpp"
 #include "orni_wrapper.hpp"
 #include "util/orni_logger.hpp"
+
+// TODO: use regex instead of spliting and striping
 
 namespace orni {
 orni::Logger logger;
@@ -53,14 +50,6 @@ class Response {
     auto getBody() const { return m_Body; }
 };
 
-void split(std::string str, const char delim, std::vector<std::string>& out) {
-    std::stringstream ss(std::string{str});
-
-    std::string s;
-    while (std::getline(ss, s, delim)) {
-        out.push_back(std::string{s});
-    }
-}
 std::string parseResponse(const Response& res) {
     std::stringstream ss;
     ss << "HTTP/1.1 " << res.getStatus() << "\r\n";
@@ -73,44 +62,6 @@ std::string parseResponse(const Response& res) {
     ss << "\n" << res.getBody();
     return ss.str();
 }
-std::map<std::string, std::string> parseCookies(const std::string& str) {
-    std::ostringstream oss;
-    std::vector<std::string> cookies;
-    std::map<std::string, std::string> out;
-    std::remove_copy(str.begin(), str.end(), std::ostream_iterator<char>(oss),
-                     ';');  // remove the ';' cause each cookie ends with it
-    std::istringstream ss(oss.str());
-    std::copy(std::istream_iterator<std::string>(ss),
-              std::istream_iterator<std::string>(),
-              std::back_inserter(cookies));  // split by spaces
-
-    for (auto& cookie : cookies) {
-        size_t epos = cookie.find('=');
-        std::string key = cookie.substr(0, epos),
-                    value = cookie.substr(
-                        epos + 1,
-                        cookie
-                            .size());  // find '=' in the raw cookie then split
-                                       // it to key, value and add it to the map
-        out[key] = value;
-    }
-    return out;
-}
-
-//  function for parsing forms names `username=foo&password=123456`
-std::map<std::string, std::string> parseForm(const std::string& str) {
-    std::vector<std::string> splited;
-    std::map<std::string, std::string> out;
-    split(str, '&', splited);
-    for (auto& form : splited) {
-        size_t epos = form.find('=');
-        std::string key = form.substr(0, epos),
-                    value = form.substr(epos + 1, form.size());
-
-        out[key] = value;
-    }
-    return out;
-}
 namespace router {
 typedef std::map<std::string, std::string>
     query_t;  // queries such as "?id=5&name=joe"
@@ -122,15 +73,16 @@ Request ParserToRequest(const httpparser::Request& req) {
     size_t pos = req.uri.find('?');
     std::string _body(req.content.begin(), req.content.end());
     std::map<std::string, std::string> StHeaders;
-    std::map<std::string, std::string> StQueries = parseForm(req.uri.substr(
-        pos + 1,
-        req.uri.size()));  // since queries are kinda same as forms style
+    std::map<std::string, std::string> StQueries =
+        orni::parsers::parseForm(req.uri.substr(
+            pos + 1,
+            req.uri.size()));  // since queries are kinda same as forms style
     for (auto& i : req.headers) {
         StHeaders[i.name] = i.value;
     }
     Request retReq{.Headers = StHeaders,
                    .Queries = StQueries,
-                   .Cookies = parseCookies(StHeaders["Cookie"]),
+                   .Cookies = orni::parsers::parseCookies(StHeaders["Cookie"]),
                    .ContentType = StHeaders["Content-Type"],
                    .Body = _body,
                    .Method = req.method,
@@ -138,11 +90,16 @@ Request ParserToRequest(const httpparser::Request& req) {
     if (retReq.ContentType ==
         "application/x-www-form-urlencoded") {  //  checking if a post performed
                                                 //  from a form
-        retReq.Form = parseForm(retReq.Body);
+        retReq.Form = orni::parsers::parseForm(retReq.Body);
     }
     return retReq;
 }
 
+// function for initialization responses after callbacks like Content-Length,
+// Date, etc
+void afterCallbackInit(Response& res) {
+    res.set("Content-Length", std::to_string(res.getBody().size()));
+}
 struct RouteObject {
     const std::string _str_url;
     const route_callback rcb;
@@ -192,39 +149,48 @@ class Router : public orni::SocketPP {
         std::string purl = preq.uri.substr(0, Qpos);
         Response res;
         size_t r_search_index = 0;
-        for (auto& route : m_Routes) {
-            r_search_index++;
-            std::regex exp(
-                route._str_url);  // parsing each route to a regex expression
-                                  // and then check if it matches the requested
-                                  // uri and execute it's callback
-            auto _matched_url = std::regex_match(purl, exp);
-            logger.debug("searching for matches");
-            logger.debug("url: " + purl + " route: " + route._str_url + '\n');
-            if (_matched_url) {
-                logger.debug(route._str_url + " matched " + purl);
-                std::smatch matches;
-                std::regex_search(purl, matches, exp);
-                std::vector<std::string> _params;
-                for (size_t i = 0; i <= matches.size() - 1;
-                     ++i) {  // yeet O(n²)
-                    _params.push_back(matches[i].str());
-                    logger.debug("regex iter: " + matches[i].str());
+        try {
+            for (auto& route : m_Routes) {
+                r_search_index++;
+                std::regex exp(
+                    route
+                        ._str_url);  // parsing each route to a regex expression
+                                     // and then check if it matches the
+                                     // requested uri and execute it's callback
+                auto _matched_url = std::regex_match(purl, exp);
+                logger.debug("searching for matches");
+                logger.debug("url: " + purl + " route: " + route._str_url +
+                             '\n');
+                if (_matched_url) {
+                    logger.debug(route._str_url + " matched " + purl);
+                    std::smatch matches;
+                    std::regex_search(purl, matches, exp);
+                    std::vector<std::string> _params;
+                    for (size_t i = 0; i <= matches.size() - 1;
+                         ++i) {  // yeet O(n²)
+                        _params.push_back(matches[i].str());
+                        logger.debug("regex iter: " + matches[i].str());
+                    }
+                    req.Params = _params;
+                    route.rcb(std::ref(req), std::ref(res));
+                    break;
+                } else if (!(_matched_url) &&
+                           r_search_index == m_Routes.size()) {
+                    NotFoundPage(std::ref(req), std::ref(res));
+                } else if (_matched_url && purl == route._str_url) {
+                    route.rcb(std::ref(req), std::ref(res));
                 }
-                req.Params = _params;
-                route.rcb(std::ref(req), std::ref(res));
-                break;
-            } else if (!(_matched_url) && r_search_index == m_Routes.size()) {
-                NotFoundPage(std::ref(req), std::ref(res));
-            } else if (_matched_url && purl == route._str_url) {
-                route.rcb(std::ref(req), std::ref(res));
             }
+        } catch (...) {
+            ServerErrorPage(std::ref(req), std::ref(res));
         }
+        afterCallbackInit(std::ref(res));
         std::string resString = parseResponse(res);
         write(GetConn(), resString.c_str(), resString.size());
         std::stringstream log;
         log << req.Method << ' ' << purl << ' ' << res.getStatus();
         logger.info(log.str());
+        logger.debug(req_url);
     }
 };  // namespace router
 }  // namespace router

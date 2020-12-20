@@ -36,9 +36,10 @@ class HttpServer : public orni::router::Router {
         std::stringstream ss;
         ss << "started server on port " << x;
         orni::logger.info(ss.str());
+        char rawHttpReq[2048];
         while (1) {
             Accept();
-            char rawHttpReq[2048];
+            memset(&rawHttpReq, 0, 2048);
             Recv(rawHttpReq);
             parseRoutes(rawHttpReq);
             CloseConn();

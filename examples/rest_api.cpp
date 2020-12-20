@@ -14,7 +14,8 @@ int main() {
             auto data = nlohmann::json::parse(req.Body);
             jsonRes["posts"].push_back(data);
             res.setStatus(201);
-            res.send("created");
+            res.send("created") std::cout << req.Body;
+            ;
         } else if (req.Method == "GET") {
             nlohmann::json example;
             example["id"] = nullptr;

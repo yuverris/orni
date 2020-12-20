@@ -42,3 +42,9 @@ cmake-build-*
 *.html
 *.css
 
+
+# still not yet ready for tests
+test[s]
+test.*
+main.*
+

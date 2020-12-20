@@ -44,13 +44,14 @@ void localServer() {
         res.set("Content-Type", "text/html");
         res.send(renderPage);
     });
-    app.route("/:file/", [&](orni::Request& req, orni::Response& res) {
+    app.route("/.*", [&](orni::Request& req, orni::Response& res) {
         std::string exRes;
         try {
-            std::string fileName = req.Params["file"];
+            std::string fileName = req.Params[0];
+            orni::logger.debug("file name: " + fileName);
             std::fstream file;
             std::stringstream filepath;
-            filepath << "./" << fileName;
+            filepath << "." << fileName;
             file.open(filepath.str().c_str(), std::ios::in);
             std::string content;
             std::string cs;

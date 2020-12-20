@@ -2,7 +2,8 @@
  * Copyright ©  2020-2021 Dammi License: AGPLv3
  *                                                                                       */
 /*
- *      socket wrapper from C to C++ style 😎 * */
+ *   shortened functions for initializing a socket
+ *   */
 
 #ifndef ORNI_WRAPPER_HPP
 #define ORNI_WRAPPER_HPP
