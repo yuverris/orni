@@ -36,8 +36,8 @@ class Response {
         std::stringstream ss;
         ss << name << '=' << val;
         m_Headers.insert(
-            {"Set-Cookie", ss.str()});  // insert instead of [] so last cookie
-                                        // we won't overwrite other cookies
+            {"Set-Cookie", ss.str()});  // insert instead of [] to avoid
+                                        // overwriting other cookies
     }
     void setStatus(int s) { m_Status = s; }
     void send(const std::string& cn) { m_Body += cn; }
@@ -95,7 +95,7 @@ Request ParserToRequest(const httpparser::Request& req) {
     return retReq;
 }
 
-// function for initialization responses after callbacks like Content-Length,
+// function for initializing responses after callbacks like Content-Length,
 // Date, etc
 void afterCallbackInit(Response& res) {
     res.set("Content-Length", std::to_string(res.getBody().size()));
@@ -138,8 +138,6 @@ class Router : public orni::SocketPP {
     }
     void setNotFoundPage(const route_callback& cb) { NotFoundPage = cb; }
     void setServerErrorPage(const route_callback& cb) { ServerErrorPage = cb; }
-    //  get a valid route from m_Routes that matches the requested route
-    //  either a templated Url or a basic url then call it's callback
     void parseRoutes(char req_url[]) {
         httpparser::HttpRequestParser parser;
         httpparser::Request preq;
