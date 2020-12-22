@@ -46,5 +46,4 @@ cmake-build-*
 # still not yet ready for tests
 test[s]
 test.*
-main.*
 
