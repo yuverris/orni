@@ -4,26 +4,24 @@
 int main() {
     orni::HttpServer app;
     nlohmann::json jsonRes = {{"posts", nlohmann::json::array()}};
-    app.route("/posts", [&](orni::Request& req, orni::Response& res) {
-        res.set("Content-Type", "application/json");
-        res.setStatus(200);
-        res.send(jsonRes.dump(4));
+    app.Get("/posts", [&](orni::Request& req, orni::Response& res) {
+        res.Set("Content-Type", "application/json");
+        res.SetStatus(200);
+        res.Send(jsonRes.dump(4));
     });
-    app.route("/new", [&](orni::Request& req, orni::Response& res) {
-        if (req.Method == "POST") {
-            auto data = nlohmann::json::parse(req.Body);
-            jsonRes["posts"].push_back(data);
-            res.setStatus(201);
-            res.send("created") std::cout << req.Body;
-            ;
-        } else if (req.Method == "GET") {
-            nlohmann::json example;
-            example["id"] = nullptr;
-            example["author"] = nullptr;
-            example["title"] = nullptr;
-            res.set("Content-Type", "application/json");
-            res.send(example.dump(4));
-        }
+    app.Post("/new", [&](orni::Request& req, orni::Response& res) {
+        auto data = nlohmann::json::parse(req.Body);
+        jsonRes["posts"].push_back(data);
+        res.SetStatus(201);
+        res.Send("created");
     });
-    app.run(5000);
+    app.Get("/new", [&](orni::Request& req, orni::Response& res) {
+        nlohmann::json example;
+        example["id"] = nullptr;
+        example["author"] = nullptr;
+        example["title"] = nullptr;
+        res.Set("Content-Type", "application/json");
+        res.Send(example.dump(4));
+    });
+    app.run(1234);
 }

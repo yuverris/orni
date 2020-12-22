@@ -20,7 +20,7 @@ std::string regPage =
 
 int main() {
     orni::HttpServer app;
-    app.route("/", [&](orni::Request& req, orni::Response& res) {
+    app.Get("/", [&](orni::Request& req, orni::Response& res) {
         std::string username = req.Cookies["username"];
         if (username.empty()) {
             res.send("auth required ! head to /register");
@@ -28,16 +28,18 @@ int main() {
             res.send("hello " + username + " !");
         }
     });
-    app.route("/register", [&](orni::Request& req, orni::Response& res) {
-        if (req.Method == "GET") {
-            res.set("Content-Type", "text/html");
-            res.send(regPage);
-        } else if (req.Method == "POST") {
-            res.addCookie("username", req.Form["username"]);
-            res.addCookie("password", req.Form["password"]);
-            res.setStatus(201);
-            res.send("created !");
-        }
-    });
+    app.route("/register",
+              [&](orni::Request& req, orni::Response& res) {
+                  if (req.Method == "GET") {
+                      res.set("Content-Type", "text/html");
+                      res.send(regPage);
+                  } else if (req.Method == "POST") {
+                      res.addCookie("username", req.Form["username"]);
+                      res.addCookie("password", req.Form["password"]);
+                      res.setStatus(201);
+                      res.send("created !");
+                  }
+              },
+              {onri::HttpMethods::Get, orni::HttpMethods::Post});
     app.run();
 }

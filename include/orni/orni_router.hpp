@@ -1,6 +1,7 @@
 #ifndef ORNI_ROUTER_HPP
 #define ORNI_ROUTER_HPP
 #include <regex>
+#include <set>
 
 #include "httpparser/httprequestparser.h"
 #include "orni_parsers.hpp"
@@ -10,6 +11,41 @@
 // TODO: use regex instead of spliting and striping
 
 namespace orni {
+enum class HttpMethods { Get, Post, Delete, Put, Patch, Head, Any };
+std::string httpMethodToStr(HttpMethods meth) {
+    switch (meth) {
+        case HttpMethods::Get:
+            return "GET";
+        case HttpMethods::Post:
+            return "POST";
+        case HttpMethods::Delete:
+            return "DELETE";
+        case HttpMethods::Put:
+            return "PUT";
+        case HttpMethods::Patch:
+            return "PATCH";
+        case HttpMethods::Head:
+            return "HEAD";
+        default:
+            return {};
+    }
+}
+HttpMethods strMethodToHttpMethod(const std::string& s) {
+    if (s == "GET") {
+        return HttpMethods::Get;
+    } else if (s == "POST") {
+        return HttpMethods::Post;
+    } else if (s == "PUT") {
+        return HttpMethods::Put;
+    } else if (s == "DELETE") {
+        return HttpMethods::Delete;
+    } else if (s == "PATCH") {
+        return HttpMethods::Patch;
+    } else if (s == "HEAD") {
+        return HttpMethods::Head;
+    }
+    return {};
+}
 orni::Logger logger;
 struct Request {
     std::map<std::string, std::string> Headers;
@@ -29,7 +65,7 @@ class Response {
     std::string m_Body;
 
    public:
-    void set(const std::string& ke, const std::string& val) {
+    void Set(const std::string& ke, const std::string& val) {
         m_Headers.insert({ke, val});
     }
     void addCookie(const std::string& name, const std::string& val) {
@@ -39,11 +75,18 @@ class Response {
             {"Set-Cookie", ss.str()});  // insert instead of [] to avoid
                                         // overwriting other cookies
     }
-    void setStatus(int s) { m_Status = s; }
-    void send(const std::string& cn) { m_Body += cn; }
-    void Redirect(const std::string& neUrl) {
-        setStatus(301);
-        set("Location", neUrl);
+    void SetStatus(int s) { m_Status = s; }
+    void Send(const std::string& text) {
+        Set("Content-Type", "text/plain");
+        m_Body += text;
+    }
+    void SendHtml(const std::string& html) {
+        Set("Content-Type", "text/html");
+        Send(html);
+    }
+    void Redirect(const std::string& targetUrl) {
+        SetStatus(301);
+        Set("Location", targetUrl);
     }
     int getStatus() const { return m_Status; }
     auto getHeaders() const { return m_Headers; }
@@ -97,47 +140,78 @@ Request ParserToRequest(const httpparser::Request& req) {
 
 // function for initializing responses after callbacks like Content-Length,
 // Date, etc
-void afterCallbackInit(Response& res) {
-    res.set("Content-Length", std::to_string(res.getBody().size()));
+constexpr void afterCallbackInit(Response& res) {
+    res.Set("Content-Length", std::to_string(res.getBody().size()));
 }
 struct RouteObject {
     const std::string _str_url;
     const route_callback rcb;
+    HttpMethods allowed_method;
 };
 class Router : public orni::SocketPP {
     std::vector<RouteObject> m_Routes;
     route_callback NotFoundPage = [&](Request& req, Response& res) {
-        res.setStatus(404);
-        res.set("Content-Type", "text/html");
-        res.send("<h1>404<h1>\nNot Found");
+        res.SetStatus(404);
+        res.Set("Content-Type", "text/html");
+        res.Send("<h1>404<h1>\nNot Found");
     };
     route_callback ServerErrorPage = [&](Request& req, Response& res) {
-        res.setStatus(500);
-        res.set("Content-Type", "text/html");
-        res.send("<h1>500<h1>\nServer Error");
+        res.SetStatus(500);
+        res.Set("Content-Type", "text/html");
+        res.Send("<h1>500<h1>\nServer Error");
     };
 
    public:
     auto getRoutes() { return m_Routes; }
-    void route(const std::string& path, const route_callback& cb) {
-        bool exist;
-        std::for_each(m_Routes.begin(), m_Routes.end(), [&](auto& _route_obj) {
-            if (_route_obj._str_url == path) {
-                exist = true;
-            } else {
-                exist = false;
+    void route(const std::string& path, const route_callback& cb,
+               HttpMethods allowed_method) {
+        for (auto& r_route : m_Routes) {
+            if (r_route._str_url == path &&
+                r_route.allowed_method == allowed_method) {
+                throw orni::Exception("route already exist");
             }
-        });
-        if (exist) {
-            std::stringstream ss;
-            ss << path << " already registered";
-            throw orni::Exception(ss.str());
-        } else {
-            m_Routes.push_back(RouteObject{._str_url = path, .rcb = cb});
         }
+        m_Routes.push_back(RouteObject{
+            ._str_url = path, .rcb = cb, .allowed_method = allowed_method});
     }
-    void setNotFoundPage(const route_callback& cb) { NotFoundPage = cb; }
-    void setServerErrorPage(const route_callback& cb) { ServerErrorPage = cb; }
+    void Get(const std::string& path, const route_callback& rcb) {
+        route(path, rcb, HttpMethods::Get);
+    }
+    void Get(std::string&& path, const route_callback&& rcb) {
+        route(std::move(path), std::move(rcb), HttpMethods::Get);
+    }
+    void Post(const std::string& path, const route_callback& rcb) {
+        route(path, rcb, HttpMethods::Post);
+    }
+    void Post(std::string&& path, const route_callback&& rcb) {
+        route(std::move(path), std::move(rcb), HttpMethods::Post);
+    }
+    void Put(const std::string& path, const route_callback& rcb) {
+        route(path, rcb, HttpMethods::Put);
+    }
+    void Put(std::string&& path, const route_callback&& rcb) {
+        route(std::move(path), std::move(rcb), HttpMethods::Put);
+    }
+    void Patch(const std::string& path, const route_callback& rcb) {
+        route(path, rcb, HttpMethods::Patch);
+    }
+    void Patch(std::string&& path, const route_callback&& rcb) {
+        route(std::move(path), std::move(rcb), HttpMethods::Patch);
+    }
+    void Delete(const std::string& path, const route_callback& rcb) {
+        route(path, rcb, HttpMethods::Delete);
+    }
+    void Delete(std::string&& path, const route_callback&& rcb) {
+        route(std::move(path), std::move(rcb), HttpMethods::Delete);
+    }
+    void Head(const std::string& path, const route_callback& rcb) {
+        route(path, rcb, HttpMethods::Head);
+    }
+    void Head(std::string&& path, const route_callback&& rcb) {
+        route(std::move(path), std::move(rcb), HttpMethods::Head);
+    }
+    void SetNotFoundPage(const route_callback& cb) { NotFoundPage = cb; }
+    void SetServerErrorPage(const route_callback& cb) { ServerErrorPage = cb; }
     void parseRoutes(char req_url[]) {
         httpparser::HttpRequestParser parser;
         httpparser::Request preq;
@@ -146,20 +220,21 @@ class Router : public orni::SocketPP {
         size_t Qpos = preq.uri.find('?');
         std::string purl = preq.uri.substr(0, Qpos);
         Response res;
-        size_t r_search_index = 0;
         try {
+            int r_search_index = 0;
             for (auto& route : m_Routes) {
                 r_search_index++;
                 std::regex exp(
-                    route
-                        ._str_url);  // parsing each route to a regex expression
-                                     // and then check if it matches the
-                                     // requested uri and execute it's callback
+                    route._str_url);  // parsing each route to a regex
+                                      // expression then check if it
+                                      // matches the requested uri and
+                                      // execute it's callback
                 auto _matched_url = std::regex_match(purl, exp);
+                HttpMethods _PathMethod = strMethodToHttpMethod(req.Method);
                 logger.debug("searching for matches");
                 logger.debug("url: " + purl + " route: " + route._str_url +
                              '\n');
-                if (_matched_url) {
+                if (_matched_url && route.allowed_method == _PathMethod) {
                     logger.debug(route._str_url + " matched " + purl);
                     std::smatch matches;
                     std::regex_search(purl, matches, exp);
@@ -172,10 +247,11 @@ class Router : public orni::SocketPP {
                     req.Params = _params;
                     route.rcb(std::ref(req), std::ref(res));
                     break;
-                } else if (!(_matched_url) &&
+                } else if ((!_matched_url) &&
                            r_search_index == m_Routes.size()) {
                     NotFoundPage(std::ref(req), std::ref(res));
-                } else if (_matched_url && purl == route._str_url) {
+                } else if (_matched_url && purl == route._str_url &&
+                           route.allowed_method == _PathMethod) {
                     route.rcb(std::ref(req), std::ref(res));
                 }
             }
@@ -191,6 +267,7 @@ class Router : public orni::SocketPP {
         logger.debug(req_url);
     }
 };  // namespace router
+
 }  // namespace router
 }  // namespace orni
 #endif  // ORNI_ROUTER_HPP

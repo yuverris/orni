@@ -18,9 +18,8 @@ note orni is currently in development and have lot of bugs so don't expect high 
 
 int main(){
     orni::HttpServer app;
-    app.route("/", [&](orni::Request& req, orni::Response& res){
-        res.set("Content-Type", "text/html");
-        res.send("<h1>Hello from orni !</h1>");
+    app.Get("/", [&](orni::Request& req, orni::Response& res){
+        res.SendHtml("<h1>Hello from orni !</h1>");
     });
     app.run(1234);
 }
