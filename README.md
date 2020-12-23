@@ -2,7 +2,7 @@
 
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/2a7358ca0dcc4022a085bc5037cfcea7)](https://app.codacy.com/gh/Dammibruh/orni?utm_source=github.com&utm_medium=referral&utm_content=Dammibruh/orni&utm_campaign=Badge_Grade)
 ![release](https://img.shields.io/badge/version-v0.2.3--b-red?style=flat-square)
-![license](https://img.shields.io/badge/license-AGPLv3-blue?style=flat-square)
+![license](https://img.shields.io/github/license/Dammibruh/orni.svg?style=flat-square)
 
 minimalist & lightweight web framework for modern C++ inspired from expressjs and other frameworks , thanks to [inja](https://github.com/pantor/inja) and [httpparser]( https://github.com/nekipelov/httpparser)
 note orni is currently in development and have lot of bugs so don't expect high performance and efficient responses from the web server, any pull request or issue is appreciated <3
