@@ -8,6 +8,7 @@
 #include <vector>
 namespace orni {
 namespace parsers {
+typedef std::map<std::string, std::string> regparse_t;
 void split(std::string str, const char delim, std::vector<std::string>& out) {
     std::stringstream ss(std::string{str});
 
@@ -16,10 +17,10 @@ void split(std::string str, const char delim, std::vector<std::string>& out) {
         out.push_back(std::string{s});
     }
 }
-std::map<std::string, std::string> parseCookies(const std::string& str) {
+regparse_t parseCookies(const std::string& str) {
     std::ostringstream oss;
     std::vector<std::string> cookies;
-    std::map<std::string, std::string> out;
+    regparse_t out;
     std::remove_copy(str.begin(), str.end(), std::ostream_iterator<char>(oss),
                      ';');  // remove the ';' cause each cookie ends with it
     std::istringstream ss(oss.str());
@@ -40,15 +41,15 @@ std::map<std::string, std::string> parseCookies(const std::string& str) {
     return out;
 }
 
-//  function for parsing forms names `username=foo&password=123456`
-std::map<std::string, std::string> parseForm(const std::string& str) {
+//  function for parsing forms ex:`username=foo&password=123456`
+regparse_t regularParser(const std::string& str) {
     std::vector<std::string> splited;
-    std::map<std::string, std::string> out;
+    regparse_t out;
     split(str, '&', splited);
-    for (auto& form : splited) {
-        size_t epos = form.find('=');
-        std::string key = form.substr(0, epos),
-                    value = form.substr(epos + 1, form.size());
+    for (auto& var : splited) {
+        size_t epos = var.find('=');
+        std::string key = var.substr(0, epos),
+                    value = var.substr(epos + 1, var.size());
 
         out[key] = value;
     }

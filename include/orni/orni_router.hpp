@@ -4,6 +4,7 @@
 #include <set>
 
 #include "httpparser/httprequestparser.h"
+#include "inja.hpp"
 #include "orni_parsers.hpp"
 #include "orni_wrapper.hpp"
 #include "util/orni_logger.hpp"
@@ -11,7 +12,12 @@
 // TODO: use regex instead of spliting and striping
 
 namespace orni {
+using json = nlohmann::json;
 enum class HttpMethods { Get, Post, Delete, Put, Patch, Head, Any };
+struct FileObject {
+    std::string filename;
+    std::string content;
+};
 std::string httpMethodToStr(HttpMethods meth) {
     switch (meth) {
         case HttpMethods::Get:
@@ -60,33 +66,39 @@ struct Request {
 };
 
 class Response {
-    std::map<std::string, std::string> m_Headers;
+    std::vector<std::pair<std::string, std::string>> m_Headers;
     int m_Status = 200;
     std::string m_Body;
 
    public:
     void Set(const std::string& ke, const std::string& val) {
-        m_Headers.insert({ke, val});
+        m_Headers.push_back({ke, val});
     }
     void addCookie(const std::string& name, const std::string& val) {
         std::stringstream ss;
         ss << name << '=' << val;
-        m_Headers.insert(
-            {"Set-Cookie", ss.str()});  // insert instead of [] to avoid
-                                        // overwriting other cookies
+        m_Headers.push_back({"Set-Cookie", ss.str()});
     }
     void SetStatus(int s) { m_Status = s; }
     void Send(const std::string& text) {
         Set("Content-Type", "text/plain");
         m_Body += text;
     }
+    void SendJson(const json& jsonObj) {
+        Set("Content-Type", "application/json");
+        m_Body += jsonObj.dump(4);
+    }
     void SendHtml(const std::string& html) {
         Set("Content-Type", "text/html");
-        Send(html);
+        m_Body += html;
     }
     void Redirect(const std::string& targetUrl) {
         SetStatus(301);
         Set("Location", targetUrl);
+    }
+    void RenderTemplate(const std::string& html, const json& jsonObj) {
+        std::string out = inja::render(html, jsonObj);
+        SendHtml(std::move(out));
     }
     int getStatus() const { return m_Status; }
     auto getHeaders() const { return m_Headers; }
@@ -97,9 +109,9 @@ std::string parseResponse(const Response& res) {
     std::stringstream ss;
     ss << "HTTP/1.1 " << res.getStatus() << "\r\n";
     if (res.getHeaders().size() > 0) {
-        for (auto& [key, value] : res.getHeaders()) {
-            ss << key << ":"
-               << " " << value << "\r\n";
+        for (auto& elm : res.getHeaders()) {
+            ss << elm.first << ":"
+               << " " << elm.second << "\r\n";
         }
     }
     ss << "\n" << res.getBody();
@@ -117,7 +129,7 @@ Request ParserToRequest(const httpparser::Request& req) {
     std::string _body(req.content.begin(), req.content.end());
     std::map<std::string, std::string> StHeaders;
     std::map<std::string, std::string> StQueries =
-        orni::parsers::parseForm(req.uri.substr(
+        orni::parsers::regularParser(req.uri.substr(
             pos + 1,
             req.uri.size()));  // since queries are kinda same as forms style
     for (auto& i : req.headers) {
@@ -133,7 +145,7 @@ Request ParserToRequest(const httpparser::Request& req) {
     if (retReq.ContentType ==
         "application/x-www-form-urlencoded") {  //  checking if a post performed
                                                 //  from a form
-        retReq.Form = orni::parsers::parseForm(retReq.Body);
+        retReq.Form = orni::parsers::regularParser(retReq.Body);
     }
     return retReq;
 }
@@ -152,13 +164,11 @@ class Router : public orni::SocketPP {
     std::vector<RouteObject> m_Routes;
     route_callback NotFoundPage = [&](Request& req, Response& res) {
         res.SetStatus(404);
-        res.Set("Content-Type", "text/html");
-        res.Send("<h1>404<h1>\nNot Found");
+        res.SendHtml("<h1>404<h1>\nNot Found");
     };
     route_callback ServerErrorPage = [&](Request& req, Response& res) {
         res.SetStatus(500);
-        res.Set("Content-Type", "text/html");
-        res.Send("<h1>500<h1>\nServer Error");
+        res.SendHtml("<h1>500<h1>\nServer Error");
     };
 
    public:
@@ -226,9 +236,9 @@ class Router : public orni::SocketPP {
                 r_search_index++;
                 std::regex exp(
                     route._str_url);  // parsing each route to a regex
-                                      // expression then check if it
-                                      // matches the requested uri and
-                                      // execute it's callback
+                                      // expression then check if it // matches
+                                      // the requested uri and execute it's
+                                      // callback
                 auto _matched_url = std::regex_match(purl, exp);
                 HttpMethods _PathMethod = strMethodToHttpMethod(req.Method);
                 logger.debug("searching for matches");
@@ -255,7 +265,8 @@ class Router : public orni::SocketPP {
                     route.rcb(std::ref(req), std::ref(res));
                 }
             }
-        } catch (...) {
+        } catch (const std::exception& ex) {
+            logger.debug(ex.what());
             ServerErrorPage(std::ref(req), std::ref(res));
         }
         afterCallbackInit(std::ref(res));

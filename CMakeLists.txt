@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 3.14)
 
 project(orni
         VERSION
-            1.0.0
+            0.2.3
         DESCRIPTION
-            "A HTTP server for modern C++ inspired from expressjs."
+            "A minimalist & lightweight web framework for modern C++ inspired from expressjs."
         LANGUAGES
             CXX
 )

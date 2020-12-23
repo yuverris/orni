@@ -1,13 +1,10 @@
-#include <nlohmann/json.hpp>  //  or use any json library
-#include <orni/orni.hpp>
+#include <orni/orni.hpp>  // nlohmann/json is already installed
 
 int main() {
     orni::HttpServer app;
     nlohmann::json jsonRes = {{"posts", nlohmann::json::array()}};
     app.Get("/posts", [&](orni::Request& req, orni::Response& res) {
-        res.Set("Content-Type", "application/json");
-        res.SetStatus(200);
-        res.Send(jsonRes.dump(4));
+        res.SendJson(jsonRes);
     });
     app.Post("/new", [&](orni::Request& req, orni::Response& res) {
         auto data = nlohmann::json::parse(req.Body);
@@ -20,8 +17,7 @@ int main() {
         example["id"] = nullptr;
         example["author"] = nullptr;
         example["title"] = nullptr;
-        res.Set("Content-Type", "application/json");
-        res.Send(example.dump(4));
+        res.SendJson(example);
     });
     app.run(1234);
 }

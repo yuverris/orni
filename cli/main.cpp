@@ -26,7 +26,7 @@ std::string_view defaultIndex =
 
 void localServer() {
     orni::HttpServer app;
-    app.route("/", [&](orni::Request& req, orni::Response& res) {
+    app.Get("/", [&](orni::Request& req, orni::Response& res) {
         std::string renderPage;
         try {
             std::ifstream index("./index.html");
@@ -41,10 +41,9 @@ void localServer() {
                 "directory\n"
                 "add it manually or run `init` command\n";
         }
-        res.set("Content-Type", "text/html");
-        res.send(renderPage);
+        res.SendHtml(renderPage);
     });
-    app.route("/.*", [&](orni::Request& req, orni::Response& res) {
+    app.Get("/.*", [&](orni::Request& req, orni::Response& res) {
         std::string exRes;
         try {
             std::string fileName = req.Params[0];
@@ -62,7 +61,7 @@ void localServer() {
         } catch (...) {
             exRes = "file not found";
         }
-        res.send(exRes);
+        res.SendHtml(exRes);
     });
     app.run();
 }
